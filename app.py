@@ -7,7 +7,8 @@ app = Flask(__name__)
 
 INSTANCE_ID = "3F353F900771725020A0F6B0730C054E"
 TOKEN = "2E4ECDD70099CF7EDCEAF35E"
-ZAPI_BASE = f"https://api.z-api.io/instances/{INSTANCE_ID}/token/{TOKEN}"
+ZAPI_BASE = f"https://api.z-api.io/instances/{INSThANCE_ID}/token/{TOKEN}"
+CLIENT_TOKEN = "Fd7f15657ef534ae09757eefa5368120cS"
 
 S_WELCOME="welcome"
 S_WAITING_ORDER="waiting_order"
@@ -31,7 +32,7 @@ def get_session(phone):
 def reset_session(phone): sessions[phone]=new_session()
 def send_text(phone,msg):
     try:
-        r=requests.post(f"{ZAPI_BASE}/send-text",json={"phone":phone,"message":msg},timeout=15)
+        r=requests.post(f"{ZAPI_BASE}/send-text",json={"phone":phone,"message":msg},headers={"Client-Token":CLIENT_TOKEN},timeout=15)
         return r.json()
     except Exception as e:
         print(f"Erro:{e}"); return {}
