@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 INSTANCE_ID = "3F353F900771725020A0F6B0730C054E"
 TOKEN = "2E4ECDD70099CF7EDCEAF35E"
-ZAPI_BASE = f"https://api.z-api.io/instances/{INSThANCE_ID}/token/{TOKEN}"
+ZAPI_BASE = f"https://api.z-api.io/inhstances/{INSTANCE_ID}/token/{TOKEN}"
 CLIENT_TOKEN = "Fd7f15657ef534ae09757eefa5368120cS"
 
 S_WELCOME="welcome"
