@@ -7,8 +7,9 @@ app = Flask(__name__)
 
 INSTANCE_ID = "3F353F900771725020A0F6B0730C054E"
 TOKEN = "2E4ECDD70099CF7EDCEAF35E"
-ZAPI_BASE = f"https://api.z-api.io/inhstances/{INSTANCE_ID}/token/{TOKEN}"
 CLIENT_TOKEN = "Fd7f15657ef534ae09757eefa5368120cS"
+ZAPI_BASE = f"https://api.z-api.io/instances/{INSTANCE_ID}/token/{TOKEN}"
+ZAPI_HEADERS = {"Client-Token": CLIENT_TOKEN, "Content-Type": "application/json"}
 
 S_WELCOME="welcome"
 S_WAITING_ORDER="waiting_order"
@@ -30,12 +31,25 @@ def get_session(phone):
     if phone not in sessions: sessions[phone]=new_session()
     return sessions[phone]
 def reset_session(phone): sessions[phone]=new_session()
-def send_text(phone,msg):
+
+def clean_phone(phone):
+    return re.sub(r'@.*$', '', str(phone)).strip()
+
+def send_text(phone, msg):
+    phone = clean_phone(phone)
     try:
-        r=requests.post(f"{ZAPI_BASE}/send-text",json={"phone":phone,"message":msg},headers={"Client-Token":CLIENT_TOKEN},timeout=15)
+        r = requests.post(
+            f"{ZAPI_BASE}/send-text",
+            json={"phone": phone, "message": msg},
+            headers=ZAPI_HEADERS,
+            timeout=15
+        )
+        print(f"[send_text] phone={phone} status={r.status_code} resp={r.text[:200]}")
         return r.json()
     except Exception as e:
-        print(f"Erro:{e}"); return {}
+        print(f"[send_text] ERRO: {e}")
+        return {}
+
 def is_paused(): return os.path.exists("/tmp/ana_paused")
 def looks_like_order(t): return bool(re.search(r"\d{8,}",t.replace(" ","")))
 def extract_order(t):
@@ -55,11 +69,15 @@ def extract_qty(d):
 @app.route("/webhook",methods=["POST"])
 def webhook():
     data=request.json or {}
+    print(f"[webhook] payload={str(data)[:500]}")
+
     if data.get("fromMe"): return jsonify({"status":"ok"})
-    phone=data.get("phone","")
+    phone=clean_phone(data.get("phone",""))
     if not phone: return jsonify({"status":"ok"})
+
     text=(data.get("text") or {}).get("message","").strip()
     is_image=bool(data.get("image") or data.get("document") or data.get("video"))
+
     if text.startswith("/pausar-ana"):
         open("/tmp/ana_paused","w").close(); return jsonify({"status":"paused"})
     if text.startswith("/retomar-ana"):
