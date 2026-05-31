@@ -6,11 +6,14 @@ import email
 import threading
 import time
 import gspread
+import pytz
 from datetime import datetime
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 from google.oauth2.service_account import Credentials
+
+BRASILIA = pytz.timezone("America/Sao_Paulo")
 
 app = Flask(__name__)
 
@@ -54,7 +57,7 @@ def salvar_pedido(numero_pedido, produto="—", quantidade="—",
         ws = get_sheet()
         if ws is None:
             return
-        data = datetime.now().strftime("%d/%m/%Y %H:%M")
+        data = datetime.now(BRASILIA).strftime("%d/%m/%Y %H:%M")
         ws.append_row([numero_pedido, data, produto, quantidade,
                        telefone, status, obs])
         print(f"[Sheets] Pedido {numero_pedido} salvo.")
@@ -156,7 +159,7 @@ def verificar_gmail():
                     quantidade="—",
                     telefone="—",
                     status="Pagamento confirmado",
-                    obs=f"Detectado via Gmail em {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+                    obs=f"Detectado via Gmail em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}"
                 )
                 pedidos_processados.add(numero)
                 novos += 1
@@ -237,7 +240,7 @@ def whatsapp():
     if media_url and estado.get("etapa") == "aguardando_imagens":
         pedido = estado.get("pedido", "")
         atualizar_status(pedido, "Imagens recebidas",
-                         obs=f"Imagem recebida em {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+                         obs=f"Imagem recebida em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}")
         resposta_texto = (
             "Imagem recebida com sucesso! ✅\n"
             "Nossa equipe já foi notificada e vai iniciar a produção em breve. "
