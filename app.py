@@ -25,7 +25,6 @@ GMAIL_USER         = os.environ.get("GMAIL_USER")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 SPREADSHEET_ID     = "1qbLhiP9g1I9Lp3LemmOw5qoNfW8y6wQyBzafseft6Fc"
 
-# ─── Google Sheets
 def get_sheet():
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
     if not creds_json:
@@ -49,7 +48,6 @@ def get_sheet():
         ])
     return ws
 
-
 def salvar_pedido(numero_pedido, produto="—", quantidade="—", sku="—",
                   cliente="—", prazo="—", telefone="—",
                   status="Pagamento confirmado", obs=""):
@@ -64,7 +62,6 @@ def salvar_pedido(numero_pedido, produto="—", quantidade="—", sku="—",
     except Exception as e:
         print(f"[Sheets] Erro ao salvar: {e}")
 
-
 def atualizar_status(numero_pedido, novo_status, obs=""):
     try:
         ws = get_sheet()
@@ -75,10 +72,8 @@ def atualizar_status(numero_pedido, novo_status, obs=""):
             ws.update_cell(cell.row, 9, novo_status)
             if obs:
                 ws.update_cell(cell.row, 10, obs)
-            print(f"[Sheets] Status de {numero_pedido} → {novo_status}")
     except Exception as e:
         print(f"[Sheets] Erro ao atualizar: {e}")
-
 
 def buscar_telefone_pedido(numero_pedido):
     try:
@@ -92,7 +87,6 @@ def buscar_telefone_pedido(numero_pedido):
     except Exception:
         return None
 
-
 def pedido_existe(numero_pedido):
     try:
         ws = get_sheet()
@@ -103,10 +97,7 @@ def pedido_existe(numero_pedido):
     except Exception:
         return False
 
-
-# ─── Regex pedido Shopee
 PEDIDO_REGEX = re.compile(r'\b([A-Z0-9]{10,20})\b')
-
 
 def extrair_numero_pedido(texto):
     candidatos = PEDIDO_REGEX.findall(texto.upper())
@@ -117,10 +108,7 @@ def extrair_numero_pedido(texto):
             return c
     return candidatos[0] if candidatos else None
 
-
-# ─── IMAP — Gmail
 pedidos_processados = set()
-
 
 def verificar_gmail():
     if not GMAIL_USER or not GMAIL_APP_PASSWORD:
@@ -130,10 +118,7 @@ def verificar_gmail():
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         mail.select("inbox")
-        _, msgs = mail.search(
-            None,
-            '(FROM "noreply@shopee.com.br" SUBJECT "Pagamento")'
-        )
+        _, msgs = mail.search(None, '(FROM "noreply@shopee.com.br" SUBJECT "Pagamento")')
         ids = msgs[0].split()
         novos = 0
         for eid in ids:
@@ -150,45 +135,28 @@ def verificar_gmail():
                         break
             else:
                 corpo = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
-
             numero = extrair_numero_pedido(assunto) or extrair_numero_pedido(corpo)
-
             if numero and numero not in pedidos_processados:
-                # Extrai todos os campos do email
-                produto    = "—"
+                produto = "—"
                 quantidade = "—"
-                sku        = "—"
-                cliente    = "—"
-                prazo      = "—"
-
-                m = re.search(
-                    r'ID do pedido:.*?\n\n(.+?)\n\nQuantidade\n\nSKU\n\n(\d+)\n\n([^\n]+)',
-                    corpo, re.DOTALL
-                )
+                sku = "—"
+                cliente = "—"
+                prazo = "—"
+                m = re.search(r'ID do pedido:.*?\n\n(.+?)\n\nQuantidade\n\nSKU\n\n(\d+)\n\n([^\n]+)', corpo, re.DOTALL)
                 if m:
-                    produto    = m.group(1).strip()
+                    produto = m.group(1).strip()
                     quantidade = m.group(2).strip()
-                    sku        = m.group(3).strip()
-
+                    sku = m.group(3).strip()
                 mc = re.search(r'Envie o pedido para ([^\.\n]+)', corpo)
                 if mc:
                     cliente = mc.group(1).strip()
-
                 mp = re.search(r'(At\u00e9 \d+ de \w+)', corpo)
                 if mp:
                     prazo = mp.group(1).strip()
-
-                salvar_pedido(
-                    numero_pedido=numero,
-                    produto=produto,
-                    quantidade=quantidade,
-                    sku=sku,
-                    cliente=cliente,
-                    prazo=prazo,
-                    telefone="—",
+                salvar_pedido(numero_pedido=numero, produto=produto, quantidade=quantidade,
+                    sku=sku, cliente=cliente, prazo=prazo, telefone="—",
                     status="Pagamento confirmado",
-                    obs=f"Detectado via Gmail em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}"
-                )
+                    obs=f"Detectado via Gmail em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}")
                 pedidos_processados.add(numero)
                 novos += 1
             pedidos_processados.add(eid)
@@ -197,53 +165,45 @@ def verificar_gmail():
     except Exception as e:
         print(f"[IMAP] Erro: {e}")
 
-
 def thread_gmail():
     print("[IMAP] Thread Gmail iniciada")
     while True:
         verificar_gmail()
         time.sleep(60)
 
-
-# ─── WhatsApp
 conversas = {}
-
 
 def responder_ana(telefone, mensagem):
     msg = mensagem.strip()
     estado = conversas.get(telefone, {"etapa": "inicio"})
     etapa = estado.get("etapa", "inicio")
-
     if etapa == "inicio":
         numero = extrair_numero_pedido(msg.upper())
         if numero:
             if pedido_existe(numero):
                 estado = {"etapa": "aguardando_imagens", "pedido": numero}
                 conversas[telefone] = estado
+                produto_info = ""
                 try:
                     ws = get_sheet()
                     if ws:
                         cell = ws.find(numero)
                         if cell:
                             ws.update_cell(cell.row, 8, telefone)
-                except Exception:
-                    pass
-                # Lê o SKU para informar a quantidade esperada
-                sku_info = ""
-                try:
-                    ws = get_sheet()
-                    if ws:
-                        cell = ws.find(numero)
-                        if cell:
+                            produto_val = ws.cell(cell.row, 3).value or ""
                             sku_val = ws.cell(cell.row, 5).value or ""
-                            if sku_val and sku_val != "—":
-                                sku_info = f"\n\nDe acordo com seu pedido, o SKU é: *{sku_val}*. Envie a quantidade correta de fotos!"
+                            qtd_match = re.search(r'(\d+)\s*FOTO', sku_val.upper())
+                            if qtd_match and produto_val and produto_val != "—":
+                                qtd = qtd_match.group(1)
+                                produto_info = f"\n\nSão {qtd} fotos\n{produto_val}"
+                            elif produto_val and produto_val != "—":
+                                produto_info = f"\n\n{produto_val}"
                 except Exception:
                     pass
                 return (
-                    f"Olá! 😊 Encontrei seu pedido *{numero}* aqui.\n\n"
-                    f"Para prosseguir, me envie as fotos que deseja usar no produto. "
-                    f"Pode mandar todas de uma vez!{sku_info}"
+                    f"Olá! 😊 Encontrei seu pedido *{numero}*."
+                    f"{produto_info}\n\n"
+                    "Me envie as fotos para prosseguirmos. Pode mandar todas de uma vez! 📸"
                 )
             else:
                 return (
@@ -257,7 +217,6 @@ def responder_ana(telefone, mensagem):
                 "Para começar, me informe o *número do seu pedido* da Shopee. "
                 "Você encontra esse número no app da Shopee em Meus Pedidos."
             )
-
     elif etapa == "aguardando_imagens":
         pedido = estado.get("pedido", "")
         numero = extrair_numero_pedido(msg.upper())
@@ -270,20 +229,18 @@ def responder_ana(telefone, mensagem):
             "Prazo médio de entrega: *3 a 5 dias úteis*. "
             "Qualquer dúvida, estou aqui! 😊"
         )
-
     return "Olá! Para um novo atendimento, me informe o número do seu pedido da Shopee. 😊"
-
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp():
-    telefone  = request.form.get("From", "")
-    mensagem  = request.form.get("Body", "")
+    telefone = request.form.get("From", "")
+    mensagem = request.form.get("Body", "")
     media_url = request.form.get("MediaUrl0", "")
     estado = conversas.get(telefone, {"etapa": "inicio"})
     if media_url and estado.get("etapa") == "aguardando_imagens":
         pedido = estado.get("pedido", "")
         atualizar_status(pedido, "Imagens recebidas",
-                         obs=f"Imagem recebida em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}")
+            obs=f"Imagem recebida em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}")
         resposta_texto = (
             "Imagem recebida com sucesso! ✅\n"
             "Nossa equipe já foi notificada e vai iniciar a produção em breve. "
@@ -296,11 +253,9 @@ def whatsapp():
     resp.message(resposta_texto)
     return str(resp)
 
-
 @app.route("/", methods=["GET"])
 def health():
     return "Ana Bot OK", 200
-
 
 if __name__ == "__main__":
     t = threading.Thread(target=thread_gmail, daemon=True)
