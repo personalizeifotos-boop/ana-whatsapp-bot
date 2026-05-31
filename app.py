@@ -1,254 +1,263 @@
-from flask import Flask, request, jsonify
-import requests
 import os
 import re
+import json
 import imaplib
-import email 
+import email
 import threading
 import time
-import json
 import gspread
-from google.oauth2.service_account import Credentials
 from datetime import datetime
+from flask import Flask, request
+from twilio.twiml.messaging_response import MessagingResponse
+from twilio.rest import Client
+from google.oauth2.service_account import Credentials
 
 app = Flask(__name__)
 
-INSTANCE_ID = "3F353F900771725020A0F6B0730C054E"
-TOKEN = "2E4ECDD70099CF7EDCEAF35E"
-CLIENT_TOKEN = "Fd7f15657ef534ae09757eefa5368120cS"
-ZAPI_BASE = f"https://api.z-api.io/instances/{INSTANCE_ID}/token/{TOKEN}"
-ZAPI_HEADERS = {"Client-Token": CLIENT_TOKEN, "Content-Type": "application/json"}
+# ─── Configurações ────────────────────────────────────────────────────────────
+TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN  = os.environ.get("TWILIO_AUTH_TOKEN")
+TWILIO_WHATSAPP    = os.environ.get("TWILIO_WHATSAPP_NUMBER", "whatsapp:+14155238886")
 
-GMAIL_USER = os.environ.get("GMAIL_USER", "personalizei.fotos@gmail.com")
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
-GOOGLE_CREDENTIALS_JSON = os.environ.get("GOOGLE_CREDENTIALS_JSON", "")
-SHEET_ID = "1qbLhiP9g1I9Lp3LemmOw5qoNfW8y6wQyBzafseft6Fc"
+GMAIL_USER         = os.environ.get("GMAIL_USER")
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 
-S_WELCOME = "welcome"
-S_WAITING_ORDER = "waiting_order"
-S_WAITING_IMAGES = "waiting_images"
-S_WAITING_EXTRA = "waiting_extra_confirm"
-S_WAITING_PIX = "waiting_pix"
+SPREADSHEET_ID     = "1qbLhiP9g1I9Lp3LemmOw5qoNfW8y6wQyBzafseft6Fc"
 
-PRICES = {"10X15": 1.00, "15X21": 1.50, "POLAROIDE": 1.00, "A4": 3.00, "IMA": 2.50, "TAG": 1.00, "ADESIVO": 1.00, "CARTAO DE VISITA": 1.00}
-KEYWORDS_RULE_A = ["tag", "cartao de visita", "adesivo"]
-LOJA_LINK = "https://shopee.com.br/personalizei_fotografias?shop=1331254404"
-MSG_FECHAMENTO = "Perfeito, seu pedido ja esta sendo preparado. Segue o link da loja:\n" + LOJA_LINK
-MSG_EXTRA = "O valor das {n} fotos a mais e de R$ {valor:.2f}.\n\nChave PIX\nTitular: Rodrigo Vieira Monteiro\nChave: 58733941000114\n\nApos pagar envie o comprovante."
-
-pedidos_confirmados = set()
-sessions = {}
-bot_paused = False
-sheets_client = None
-worksheet = None
-
-def init_sheets():
-    global sheets_client, worksheet
-    if not GOOGLE_CREDENTIALS_JSON:
-        print("[Sheets] sem credenciais")
-        return
+# ─── Google Sheets ────────────────────────────────────────────────────────────
+def get_sheet():
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    if not creds_json:
+        return None
+    creds_dict = json.loads(creds_json)
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+    ]
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    gc = gspread.authorize(creds)
+    sh = gc.open_by_key(SPREADSHEET_ID)
     try:
-        creds_dict = json.loads(GOOGLE_CREDENTIALS_JSON)
-        scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-        sheets_client = gspread.authorize(creds)
-        sh = sheets_client.open_by_key(SHEET_ID)
-        worksheet = sh.sheet1
-        headers = worksheet.row_values(1)
-        if not headers or headers[0] != "Numero do Pedido":
-            worksheet.update("A1:G1", [["Numero do Pedido","Data","Produto","Quantidade","Telefone","Status","Obs"]])
-        print("[Sheets] OK!")
-    except Exception as e:
-        print(f"[Sheets] Erro: {e}")
+        ws = sh.worksheet("Pedidos")
+    except gspread.WorksheetNotFound:
+        ws = sh.add_worksheet(title="Pedidos", rows=1000, cols=10)
+        ws.append_row([
+            "Número do Pedido", "Data", "Produto", "Quantidade",
+            "Telefone", "Status", "Obs"
+        ])
+    return ws
 
-def salvar_pedido_sheets(num, produto="", qtd="", tel="", status="Confirmado", obs=""):
-    if worksheet is None: return
+
+def salvar_pedido(numero_pedido, produto="—", quantidade="—",
+                  telefone="—", status="Aguardando imagens", obs=""):
     try:
+        ws = get_sheet()
+        if ws is None:
+            return
         data = datetime.now().strftime("%d/%m/%Y %H:%M")
-        worksheet.append_row([num, data, produto, str(qtd), tel, status, obs])
-        print(f"[Sheets] Salvo: {num}")
+        ws.append_row([numero_pedido, data, produto, quantidade,
+                       telefone, status, obs])
+        print(f"[Sheets] Pedido {numero_pedido} salvo.")
     except Exception as e:
-        print(f"[Sheets] Erro salvar: {e}")
+        print(f"[Sheets] Erro ao salvar: {e}")
 
-def atualizar_status_sheets(num, status, obs=""):
-    if worksheet is None or not num: return
+
+def atualizar_status(numero_pedido, novo_status, obs=""):
     try:
-        cell = worksheet.find(num)
+        ws = get_sheet()
+        if ws is None:
+            return
+        cell = ws.find(numero_pedido)
         if cell:
-            worksheet.update_cell(cell.row, 6, status)
-            if obs: worksheet.update_cell(cell.row, 7, obs)
+            ws.update_cell(cell.row, 6, novo_status)
+            if obs:
+                ws.update_cell(cell.row, 7, obs)
+            print(f"[Sheets] Status de {numero_pedido} → {novo_status}")
     except Exception as e:
-        print(f"[Sheets] Erro atualizar: {e}")
+        print(f"[Sheets] Erro ao atualizar: {e}")
 
-def clean_subject(s):
-    decoded = email.header.decode_header(s)
-    return "".join(p.decode(e or "utf-8", errors="ignore") if isinstance(p, bytes) else p for p, e in decoded)
+
+def buscar_telefone_pedido(numero_pedido):
+    """Retorna o telefone associado ao pedido, ou None."""
+    try:
+        ws = get_sheet()
+        if ws is None:
+            return None
+        cell = ws.find(numero_pedido)
+        if cell:
+            return ws.cell(cell.row, 5).value or None
+        return None
+    except Exception:
+        return None
+
+
+def pedido_existe(numero_pedido):
+    try:
+        ws = get_sheet()
+        if ws is None:
+            return False
+        cell = ws.find(numero_pedido)
+        return cell is not None
+    except Exception:
+        return False
+
+
+# ─── Extração do número de pedido Shopee ─────────────────────────────────────
+PEDIDO_REGEX = re.compile(r'\b([A-Z0-9]{10,20})\b')
+
+
+def extrair_numero_pedido(texto):
+    candidatos = PEDIDO_REGEX.findall(texto.upper())
+    for c in candidatos:
+        tem_letra = any(ch.isalpha() for ch in c)
+        tem_digito = any(ch.isdigit() for ch in c)
+        if tem_letra and tem_digito:
+            return c
+    return candidatos[0] if candidatos else None
+
+
+# ─── IMAP — monitoramento do Gmail ───────────────────────────────────────────
+pedidos_processados = set()
+
 
 def verificar_gmail():
-    if not GMAIL_APP_PASSWORD: return
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        print("[IMAP] Credenciais Gmail não configuradas.")
+        return
     try:
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         mail.select("inbox")
-        _, ids = mail.search(None, '(UNSEEN FROM "Shopee")')
+        _, msgs = mail.search(
+            None,
+            '(FROM "noreply@shopee.com.br" SUBJECT "Pagamento Confirmado")'
+        )
+        ids = msgs[0].split()
         novos = 0
-        for mid in ids[0].split():
-            _, data = mail.fetch(mid, "(RFC822)")
+        for eid in ids:
+            if eid in pedidos_processados:
+                continue
+            _, data = mail.fetch(eid, "(RFC822)")
             msg = email.message_from_bytes(data[0][1])
-            subject = clean_subject(msg.get("Subject", ""))
-            if "pagamento" in subject.lower():
-                body = ""
-                if msg.is_multipart():
-                    for part in msg.walk():
-                        if part.get_content_type() in ("text/plain","text/html"):
-                            body = part.get_payload(decode=True).decode("utf-8", errors="ignore"); break
-                else:
-                    body = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
-                m = re.search(r'\b([0-9A-Z]{10,20})\b', body + " " + subject)
-                if m:
-                    num = m.group(1)
-                    if num not in pedidos_confirmados:
-                        pedidos_confirmados.add(num)
-                        p = re.search(r'Produto[:\s]+([^\n]+)', body)
-                        q = re.search(r'Quantidade[:\s]+(\d+)', body)
-                        salvar_pedido_sheets(num, p.group(1).strip() if p else "", q.group(1) if q else "", "", "Aguardando imagens")
-                        novos += 1
-                mail.store(mid, "+FLAGS", "\\Seen")
+            assunto = msg.get("Subject", "")
+            corpo = ""
+            if msg.is_multipart():
+                for part in msg.walk():
+                    if part.get_content_type() == "text/plain":
+                        corpo = part.get_payload(decode=True).decode("utf-8", errors="ignore")
+                        break
+            else:
+                corpo = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
+            numero = extrair_numero_pedido(assunto) or extrair_numero_pedido(corpo)
+            if numero and numero not in pedidos_processados:
+                salvar_pedido(
+                    numero_pedido=numero,
+                    produto="—",
+                    quantidade="—",
+                    telefone="—",
+                    status="Pagamento confirmado",
+                    obs=f"Detectado via Gmail em {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+                )
+                pedidos_processados.add(numero)
+                novos += 1
+            pedidos_processados.add(eid)
+        print(f"[IMAP] {novos} novos pedidos da Shopee.")
         mail.logout()
-        print(f"[IMAP] {novos} emails novos da Shopee")
     except Exception as e:
         print(f"[IMAP] Erro: {e}")
 
-def imap_thread():
+
+def thread_gmail():
     print("[IMAP] Thread Gmail iniciada")
     while True:
         verificar_gmail()
         time.sleep(60)
 
-def clean_phone(p): return re.sub(r'@.*$', '', str(p)).strip()
 
-def send_text(phone, message):
-    phone = clean_phone(phone)
-    resp = requests.post(f"{ZAPI_BASE}/send-text", json={"phone": phone, "message": message}, headers=ZAPI_HEADERS)
-    print(f"[send] {phone}: {message[:50]} -> {resp.status_code}")
-    return resp
+# ─── Estado das conversas WhatsApp ───────────────────────────────────────────
+conversas = {}
 
-def get_session(phone):
-    phone = clean_phone(phone)
-    if phone not in sessions:
-        sessions[phone] = {"state": S_WELCOME, "order": None, "product": None, "qty": 0, "images": 0}
-    return sessions[phone]
 
-def detect_product(text):
-    for p in PRICES:
-        if p in text.upper(): return p
-    return None
-
-def is_order_valid(num):
-    if not num: return False
-    num = num.strip().upper()
-    if re.match(r'^[A-Z0-9]{5,20}$', num):
-        return num in pedidos_confirmados or len(pedidos_confirmados) == 0
-    return False
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    global bot_paused
-    data = request.get_json(force=True)
-    print(f"[webhook] {json.dumps(data)[:200]}")
-    phone = clean_phone(data.get("phone") or data.get("from") or data.get("sender") or "")
-    msg_type = data.get("type", "")
-    if msg_type == "TEXT":
-        text = (data.get("text", {}).get("message") or data.get("message") or "").strip()
-    elif msg_type in ("IMAGE","DOCUMENT","STICKER"):
-        text = "__IMAGE__"
-    else:
-        text = (data.get("message") or data.get("body") or "").strip()
-        if not text: return jsonify({"status": "ignored"}), 200
-    if not phone: return jsonify({"status": "no phone"}), 200
-
-    if text.startswith("/pausar-ana"):
-        bot_paused = True; send_text(phone, "Ana pausada."); return jsonify({"status": "ok"}), 200
-    if text.startswith("/retomar-ana"):
-        bot_paused = False; send_text(phone, "Ana reativada."); return jsonify({"status": "ok"}), 200
-    if text.startswith("/status-ana"):
-        send_text(phone, f"Status: {'Pausada' if bot_paused else 'Ativa'}\nPedidos: {len(pedidos_confirmados)}\nSessoes: {len(sessions)}")
-        return jsonify({"status": "ok"}), 200
-    if text.startswith("/pedido "):
-        parts = text.split()
-        if len(parts) >= 4:
-            p_phone = clean_phone(parts[1]); produto = parts[2].upper(); qty = int(parts[3]) if parts[3].isdigit() else 0
-            num = f"MANUAL-{p_phone[-4:]}-{int(time.time())}"
-            pedidos_confirmados.add(num); salvar_pedido_sheets(num, produto, qty, p_phone, "Manual")
-            sess = get_session(p_phone)
-            sess.update({"state": S_WAITING_IMAGES, "product": produto, "qty": qty, "order": num})
-            send_text(p_phone, f"Pedido confirmado! Envie {qty} foto(s) para {produto}.")
-            send_text(phone, f"Pedido {num} criado.")
-        return jsonify({"status": "ok"}), 200
-
-    if bot_paused: return jsonify({"status": "paused"}), 200
-
-    sess = get_session(phone)
-    state = sess["state"]
-
-    if state == S_WELCOME:
-        sess["state"] = S_WAITING_ORDER
-        send_text(phone, "Ola, seja bem vindo!!! Antes de enviar as suas imagens preciso que voce me envie o numero do pedido.")
-    elif state == S_WAITING_ORDER:
-        m = re.search(r'[A-Z0-9]{5,20}', text.upper())
-        order_num = m.group(0) if m else text.strip()
-        if is_order_valid(order_num):
-            sess["order"] = order_num
-            produto = detect_product(text)
-            if produto: sess["product"] = produto
-            sess["state"] = S_WAITING_IMAGES
-            msg = f"Pedido {order_num} confirmado! " + (f"Envie suas fotos para {produto}." if produto else "Agora pode enviar suas fotos.")
-            send_text(phone, msg)
-            atualizar_status_sheets(order_num, "Aguardando imagens", f"Tel: {phone}")
-        else:
-            send_text(phone, "Numero de pedido nao encontrado. Verifique e tente novamente.")
-    elif state == S_WAITING_IMAGES:
-        if text == "__IMAGE__":
-            sess["images"] = sess.get("images", 0) + 1
-            qty = sess.get("qty", 0); produto = sess.get("product", "")
-            if qty > 0 and sess["images"] >= qty:
-                if produto and produto.lower() in KEYWORDS_RULE_A:
-                    extra = sess["images"] - qty
-                    if extra > 0:
-                        valor = extra * PRICES.get(produto.upper(), 1.0)
-                        sess["state"] = S_WAITING_EXTRA
-                        send_text(phone, MSG_EXTRA.format(n=extra, valor=valor))
-                        return jsonify({"status": "ok"}), 200
-                sess["state"] = S_WAITING_PIX
-                send_text(phone, MSG_FECHAMENTO)
-                atualizar_status_sheets(sess.get("order",""), "Imagens recebidas")
+def responder_ana(telefone, mensagem):
+    msg = mensagem.strip()
+    estado = conversas.get(telefone, {"etapa": "inicio"})
+    etapa = estado.get("etapa", "inicio")
+    if etapa == "inicio":
+        numero = extrair_numero_pedido(msg.upper())
+        if numero:
+            if pedido_existe(numero):
+                estado = {"etapa": "aguardando_imagens", "pedido": numero}
+                conversas[telefone] = estado
+                try:
+                    ws = get_sheet()
+                    if ws:
+                        cell = ws.find(numero)
+                        if cell:
+                            ws.update_cell(cell.row, 5, telefone)
+                except Exception:
+                    pass
+                return (
+                    f"Olá! 😊 Encontrei seu pedido *{numero}* aqui.\n\n"
+                    "Para prosseguir, por favor me envie as fotos que deseja usar no produto. "
+                    "Pode mandar todas de uma vez!"
+                )
             else:
-                send_text(phone, f"Foto {sess['images']} recebida! Continue enviando.")
+                return (
+                    f"Oi! Não encontrei o pedido *{numero}* no sistema ainda. "
+                    "Aguarde alguns minutos após a confirmação do pagamento e tente novamente. "
+                    "Se o problema persistir, me informe e eu verifico! 😊"
+                )
         else:
-            send_text(phone, "Por favor, envie suas fotos.")
-    elif state == S_WAITING_EXTRA:
-        if text == "__IMAGE__":
-            sess["state"] = S_WAITING_PIX; send_text(phone, MSG_FECHAMENTO)
-            atualizar_status_sheets(sess.get("order",""), "Pagamento recebido")
-        else:
-            send_text(phone, "Aguardando comprovante PIX.")
-    elif state == S_WAITING_PIX:
-        if text == "__IMAGE__":
-            sess["state"] = S_WAITING_IMAGES; send_text(phone, "Comprovante recebido! Obrigado, pedido em processamento.")
-            atualizar_status_sheets(sess.get("order",""), "Concluido")
-        else:
-            send_text(phone, "Aguardando o comprovante de pagamento.")
+            return (
+                "Olá! Sou a Ana, assistente da *Personalizei Fotos* 📸\n\n"
+                "Para começar, me informe o *número do seu pedido* da Shopee. "
+                "Você encontra esse número no app da Shopee em Meus Pedidos."
+            )
+    elif etapa == "aguardando_imagens":
+        pedido = estado.get("pedido", "")
+        numero = extrair_numero_pedido(msg.upper())
+        if numero and numero != pedido:
+            estado = {"etapa": "aguardando_imagens", "pedido": numero}
+            conversas[telefone] = estado
+            return f"Ok, mudando para o pedido *{numero}*. Me envie as fotos! 📷"
+        return (
+            "Recebi! Assim que todas as fotos chegarem, nossa equipe começa a produção. "
+            "Prazo médio de entrega: *3 a 5 dias úteis*. "
+            "Qualquer dúvida, estou aqui! 😊"
+        )
+    return "Olá! Para um novo atendimento, me informe o número do seu pedido da Shopee. 😊"
 
-    return jsonify({"status": "ok"}), 200
 
-@app.route('/health', methods=['GET'])
+@app.route("/whatsapp", methods=["POST"])
+def whatsapp():
+    telefone  = request.form.get("From", "")
+    mensagem  = request.form.get("Body", "")
+    media_url = request.form.get("MediaUrl0", "")
+    estado = conversas.get(telefone, {"etapa": "inicio"})
+    if media_url and estado.get("etapa") == "aguardando_imagens":
+        pedido = estado.get("pedido", "")
+        atualizar_status(pedido, "Imagens recebidas",
+                         obs=f"Imagem recebida em {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        resposta_texto = (
+            "Imagem recebida com sucesso! ✅\n"
+            "Nossa equipe já foi notificada e vai iniciar a produção em breve. "
+            "Obrigada pela confiança! 💜"
+        )
+        conversas[telefone] = {"etapa": "imagens_recebidas", "pedido": pedido}
+    else:
+        resposta_texto = responder_ana(telefone, mensagem)
+    resp = MessagingResponse()
+    resp.message(resposta_texto)
+    return str(resp)
+
+
+@app.route("/", methods=["GET"])
 def health():
-    return jsonify({"status":"ok","paused":bot_paused,"pedidos":len(pedidos_confirmados),"sessions":len(sessions)}), 200
+    return "Ana Bot OK", 200
 
-if __name__ == '__main__':
-    init_sheets()
-    threading.Thread(target=imap_thread, daemon=True).start()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-else:
-    init_sheets()
-    threading.Thread(target=imap_thread, daemon=True).start()
+
+if __name__ == "__main__":
+    t = threading.Thread(target=thread_gmail, daemon=True)
+    t.start()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
