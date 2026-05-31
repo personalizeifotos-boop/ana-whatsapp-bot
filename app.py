@@ -331,7 +331,7 @@ def responder_ana(telefone, mensagem, tem_midia=False):
     # ══════════════════════════════════════════════════════════════════
     # ETAPA: AGUARDANDO NÚMERO (fotos chegaram antes do pedido)
     # ══════════════════════════════════════════════════════════════════
-    elif etapa == "aguardando_pedido":
+    elif etape == "aguardando_pedido":
         if numero:
             if pedido_existe(numero):
                 dados = info_pedido(numero)
@@ -467,8 +467,10 @@ def health():
     return "Ana Bot OK", 200
 
 
+# Inicia thread IMAP no nível do módulo — funciona com gunicorn E flask dev
+_imap_thread = threading.Thread(target=thread_gmail, daemon=True)
+_imap_thread.start()
+
 if __name__ == "__main__":
-    t = threading.Thread(target=thread_gmail, daemon=True)
-    t.start()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
