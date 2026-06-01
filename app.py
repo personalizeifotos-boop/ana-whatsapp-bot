@@ -16,7 +16,7 @@ BRASILIA = pytz.timezone("America/Sao_Paulo")
 
 app = Flask(__name__)
 
-# ─── Configurações
+# âââ ConfiguraÃ§Ãµes
 TWILIO_WHATSAPP = os.environ.get("TWILIO_WHATSAPP_NUMBER", "whatsapp:+14155238886")
 GMAIL_USER = os.environ.get("GMAIL_USER")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
@@ -24,8 +24,7 @@ SPREADSHEET_ID = "1qbLhiP9g1I9Lp3LemmOw5qoNfW8y6wQyBzafseft6Fc"
 
 PIX_INFO = "Titular: Rodrigo Vieira Monteiro\nChave PIX: 58733941000114"
 
-
-# ─── Google Sheets
+# âââ Google Sheets
 def get_sheet():
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
     if not creds_json:
@@ -43,15 +42,14 @@ def get_sheet():
     except gspread.WorksheetNotFound:
         ws = sh.add_worksheet(title="Pedidos", rows=1000, cols=12)
         ws.append_row([
-            "Número do Pedido", "Data", "Produto", "Quantidade",
+            "NÃºmero do Pedido", "Data", "Produto", "Quantidade",
             "SKU", "Cliente", "Prazo de Entrega",
             "Telefone", "Status", "Obs"
         ])
     return ws
 
-
-def salvar_pedido(numero_pedido, produto="—", quantidade="—", sku="—",
-                  cliente="—", prazo="—", telefone="—",
+def salvar_pedido(numero_pedido, produto="â", quantidade="â", sku="â",
+                  cliente="â", prazo="â", telefone="â",
                   status="Pagamento confirmado", obs=""):
     try:
         ws = get_sheet()
@@ -63,7 +61,6 @@ def salvar_pedido(numero_pedido, produto="—", quantidade="—", sku="—",
         print(f"[Sheets] Pedido {numero_pedido} salvo.")
     except Exception as e:
         print(f"[Sheets] Erro ao salvar: {e}")
-
 
 def atualizar_status(numero_pedido, novo_status, obs=""):
     try:
@@ -78,7 +75,6 @@ def atualizar_status(numero_pedido, novo_status, obs=""):
     except Exception as e:
         print(f"[Sheets] Erro ao atualizar: {e}")
 
-
 def pedido_existe(numero_pedido):
     try:
         ws = get_sheet()
@@ -89,9 +85,7 @@ def pedido_existe(numero_pedido):
     except Exception:
         return False
 
-
 def info_pedido(numero_pedido):
-    """Retorna dict com dados do pedido da planilha."""
     try:
         ws = get_sheet()
         if ws is None:
@@ -100,16 +94,15 @@ def info_pedido(numero_pedido):
         if cell:
             row = ws.row_values(cell.row)
             return {
-                "produto": row[2] if len(row) > 2 else "—",
-                "quantidade": row[3] if len(row) > 3 else "—",
-                "sku": row[4] if len(row) > 4 else "—",
-                "cliente": row[5] if len(row) > 5 else "—",
+                "produto": row[2] if len(row) > 2 else "â",
+                "quantidade": row[3] if len(row) > 3 else "â",
+                "sku": row[4] if len(row) > 4 else "â",
+                "cliente": row[5] if len(row) > 5 else "â",
                 "row": cell.row,
             }
     except Exception:
         pass
     return {}
-
 
 def atualizar_telefone(numero_pedido, telefone):
     try:
@@ -122,10 +115,8 @@ def atualizar_telefone(numero_pedido, telefone):
     except Exception:
         pass
 
-
-# ─── Extração do número de pedido Shopee
+# âââ ExtraÃ§Ã£o do nÃºmero de pedido Shopee
 PEDIDO_REGEX = re.compile(r'\b([A-Z0-9]{10,20})\b')
-
 
 def extrair_numero_pedido(texto):
     candidatos = PEDIDO_REGEX.findall(texto.upper())
@@ -136,75 +127,121 @@ def extrair_numero_pedido(texto):
             return c
     return candidatos[0] if candidatos else None
 
-
-# ─── Thread IMAP — monitora Gmail a cada 60s
+# âââ Thread IMAP â monitora Gmail a cada 60s
 pedidos_processados = set()
 
+def extrair_corpo_email(msg):
+    """Extrai texto do email, tentando plain text primeiro, depois HTML."""
+    corpo = ""
+    corpo_html = ""
+    if msg.is_multipart():
+        for part in msg.walk():
+            ct = part.get_content_type()
+            if ct == "text/plain" and not corpo:
+                try:
+                    corpo = part.get_payload(decode=True).decode("utf-8", errors="ignore")
+                except Exception:
+                    pass
+            elif ct == "text/html" and not corpo_html:
+                try:
+                    corpo_html = part.get_payload(decode=True).decode("utf-8", errors="ignore")
+                except Exception:
+                    pass
+    else:
+        try:
+            raw = msg.get_payload(decode=True)
+            if raw:
+                decoded = raw.decode("utf-8", errors="ignore")
+                if msg.get_content_type() == "text/html":
+                    corpo_html = decoded
+                else:
+                    corpo = decoded
+        except Exception:
+            pass
+
+    if not corpo and corpo_html:
+        # Remove tags HTML para obter texto simples
+        corpo = re.sub(r'<[^>]+>', ' ', corpo_html)
+        corpo = re.sub(r'&nbsp;', ' ', corpo)
+        corpo = re.sub(r'&amp;', '&', corpo)
+        corpo = re.sub(r'\s+', ' ', corpo)
+
+    return corpo
 
 def verificar_gmail():
     if not GMAIL_USER or not GMAIL_APP_PASSWORD:
-        print("[IMAP] Credenciais Gmail não configuradas.")
+        print("[IMAP] Credenciais Gmail nÃ£o configuradas.")
         return
     try:
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         mail.select("inbox")
-        _, msgs = mail.search(None, '(FROM "noreply@shopee.com.br" SUBJECT "Pagamento")')
+        # CORRIGIDO: FROM e SUBJECT corretos da Shopee Brasil
+        _, msgs = mail.search(None, '(FROM "info@mail.shopee.com.br" SUBJECT "Hora de enviar")')
         ids = msgs[0].split()
         novos = 0
         for eid in ids:
             if eid in pedidos_processados:
                 continue
-            _, data = mail.fetch(eid, "(RFC822)")
-            msg = email.message_from_bytes(data[0][1])
-            assunto = msg.get("Subject", "")
-            corpo = ""
-            if msg.is_multipart():
-                for part in msg.walk():
-                    if part.get_content_type() == "text/plain":
-                        corpo = part.get_payload(decode=True).decode("utf-8", errors="ignore")
-                        break
-            else:
-                corpo = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
+            try:
+                _, data = mail.fetch(eid, "(RFC822)")
+                msg = email.message_from_bytes(data[0][1])
+                assunto = msg.get("Subject", "")
+                corpo = extrair_corpo_email(msg)
 
-            numero = extrair_numero_pedido(assunto) or extrair_numero_pedido(corpo)
-            if numero and numero not in pedidos_processados:
-                produto = "—"
-                quantidade = "—"
-                sku = "—"
-                cliente = "—"
-                prazo = "—"
-                m = re.search(
-                    r'ID do pedido:.*?\n\n(.+?)\n\nQuantidade\n\nSKU\n\n(\d+)\n\n([^\n]+)',
-                    corpo, re.DOTALL
+                # Extrai nÃºmero direto do assunto: "Hora de enviar o pedido XXXXXX"
+                m_subj = re.search(r'pedido\s+([A-Z0-9]{10,20})', assunto, re.IGNORECASE)
+                numero = m_subj.group(1).upper() if m_subj else (
+                    extrair_numero_pedido(assunto) or extrair_numero_pedido(corpo)
                 )
-                if m:
-                    produto = m.group(1).strip()
-                    quantidade = m.group(2).strip()
-                    sku = m.group(3).strip()
-                mc = re.search(r'Envie o pedido para ([^\.\n]+)', corpo)
-                if mc:
-                    cliente = mc.group(1).strip()
-                mp = re.search(r'(Até \d+ de \w+)', corpo)
-                if mp:
-                    prazo = mp.group(1).strip()
 
-                salvar_pedido(
-                    numero_pedido=numero, produto=produto,
-                    quantidade=quantidade, sku=sku,
-                    cliente=cliente, prazo=prazo,
-                    status="Pagamento confirmado",
-                    obs=f"Detectado via Gmail em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}"
-                )
-                pedidos_processados.add(numero)
-                novos += 1
+                if numero and not pedido_existe(numero):
+                    produto = "â"
+                    quantidade = "â"
+                    sku = "â"
+                    cliente = "â"
+                    prazo = "â"
 
-            pedidos_processados.add(eid)
+                    # Produto: linha/texto apÃ³s "ID do pedido:" (plain text ou HTML stripped)
+                    m_prod = re.search(
+                        r'ID do pedido:\s*#?' + re.escape(numero) + r'[\s\S]{0,50}?([A-Za-zÃ-Ãº][^\n\t]{10,})',
+                        corpo, re.IGNORECASE
+                    )
+                    if m_prod:
+                        produto = m_prod.group(1).strip().rstrip('.')
+
+                    # Quantidade: nÃºmero apÃ³s "Quantidade"
+                    m_qtd = re.search(r'Quantidade\s+(\d+)', corpo)
+                    if m_qtd:
+                        quantidade = m_qtd.group(1).strip()
+
+                    # Cliente: "Envie o pedido para XXXX"
+                    mc = re.search(r'Envie o pedido para ([^\.\n,]+)', corpo)
+                    if mc:
+                        cliente = mc.group(1).strip()
+
+                    # Prazo de entrega
+                    mp = re.search(r'(AtÃ© \d+ de \w+)', corpo)
+                    if mp:
+                        prazo = mp.group(1).strip()
+
+                    salvar_pedido(
+                        numero_pedido=numero, produto=produto,
+                        quantidade=quantidade, sku=sku,
+                        cliente=cliente, prazo=prazo,
+                        status="Pagamento confirmado",
+                        obs=f"Detectado via Gmail em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}"
+                    )
+                    novos += 1
+            except Exception as e:
+                print(f"[IMAP] Erro ao processar email {eid}: {e}")
+            finally:
+                pedidos_processados.add(eid)
+
         print(f"[IMAP] {novos} novos pedidos da Shopee.")
         mail.logout()
     except Exception as e:
         print(f"[IMAP] Erro: {e}")
-
 
 def thread_gmail():
     print("[IMAP] Thread Gmail iniciada")
@@ -212,30 +249,20 @@ def thread_gmail():
         verificar_gmail()
         time.sleep(60)
 
-
-# ─── Estado das conversas
-# Estrutura: { telefone: { "etapa": ..., "pedido": ..., "ultima_msg": ... } }
+# âââ Estado das conversas
 conversas = {}
 
-# Etapas:
-# "inicio"                → aguardando número do pedido
-# "aguardando_imagens"    → pedido encontrado, esperando fotos
-# "aguardando_pedido"     → fotos chegaram antes do número, esperando número
-# "imagens_recebidas"     → tudo pronto, em produção
-
-
 def montar_info_produto(dados):
-    """Monta texto com qtd de fotos e descrição do produto a partir do SKU."""
     sku = dados.get("sku", "")
     produto = dados.get("produto", "")
-    qtd_match = re.search(r'(\d+)\s*FOTO', sku.upper())
-    if qtd_match and produto and produto != "—":
-        qtd = qtd_match.group(1)
-        return f"\nSão {qtd} fotos\n{produto}"
-    elif produto and produto != "—":
+    quantidade = dados.get("quantidade", "")
+    qtd_match = re.search(r'(\d+)\s*FOTO', sku.upper()) if sku else None
+    qtd = qtd_match.group(1) if qtd_match else quantidade
+    if qtd and qtd != "â" and produto and produto != "â":
+        return f"\nSÃ£o {qtd} fotos\n{produto}"
+    elif produto and produto != "â":
         return f"\n{produto}"
     return ""
-
 
 def responder_ana(telefone, mensagem, tem_midia=False):
     msg_lower = mensagem.strip().lower()
@@ -245,10 +272,10 @@ def responder_ana(telefone, mensagem, tem_midia=False):
     etapa = estado.get("etapa", "inicio")
     ultima_msg = estado.get("ultima_msg", "")
 
-    # ── Detecção de Google Drive ──────────────────────────────────────
+    # ââ Google Drive ââââââââââââââââââââââââââââââââââââââ
     if "drive.google.com" in msg_lower:
         resposta = (
-            "Obrigada pelo link! 😊\n"
+            "Obrigada pelo link! ð\n"
             "Vou solicitar acesso no Drive no nome de *Ana Maria*.\n"
             "Assim que tiver acesso, confirmo as fotos."
         )
@@ -256,43 +283,39 @@ def responder_ana(telefone, mensagem, tem_midia=False):
         conversas[telefone] = estado
         return resposta
 
-    # ── Perguntas sobre preço / pagamento ────────────────────────────
-    palavras_preco = ["preço", "preco", "quanto", "custa", "valor", "pagar",
-                      "pagamento", "pix", "transferência", "transferencia"]
+    # ââ PreÃ§o / pagamento ââââââââââââââââââââââââââââââââââââââââ
+    palavras_preco = ["preÃ§o", "preco", "quanto", "custa", "valor", "pagar",
+                      "pagamento", "pix", "transferÃªncia", "transferencia"]
     if any(p in msg_lower for p in palavras_preco):
         resposta = (
-            "Nossos preços:\n\n"
-            "📷 *Foto 10x15* — R$1,00/unidade\n"
-            "📷 *Foto 15x21* — R$1,50/unidade\n"
-            "🧲 *Foto Imã Geladeira* — R$2,50/unidade\n"
-            "🎞️ *Foto Polaroide* — R$1,50/unidade\n\n"
+            "Nossos preÃ§os:\n\n"
+            "ð· *Foto 10x15* â R$1,00/unidade\n"
+            "ð· *Foto 15x21* â R$1,50/unidade\n"
+            "ð§² *Foto ImÃ£ Geladeira* â R$2,50/unidade\n"
+            "ðï¸ *Foto Polaroide* â R$1,50/unidade\n\n"
             f"Para pagamentos:\n{PIX_INFO}"
         )
         estado["ultima_msg"] = resposta
         conversas[telefone] = estado
         return resposta
 
-    # ── Cancelamento e compra direta ─────────────────────────────────
+    # ââ Cancelamento âââââââââââââââââââââââââââââââââââââââââââââ
     if "cancel" in msg_lower and any(p in msg_lower for p in ["comprar", "maior", "mais", "pacote"]):
         resposta = (
-            "Sim, pode cancelar direto no app da Shopee! 😊\n\n"
-            "Mas se preferir, pode comprar a diferença diretamente com a gente — "
+            "Sim, pode cancelar direto no app da Shopee! ð\n\n"
+            "Mas se preferir, pode comprar a diferenÃ§a diretamente com a gente â "
             "aproveitamos esse pedido e enviamos tudo junto.\n\n"
-            "📷 Foto 10x15: R$1,00/unidade\n"
-            "📷 Foto 15x21: R$1,50/unidade\n"
-            "🧲 Foto Imã: R$2,50/unidade\n\n"
-            "Quer continuar com a gente? Me diz quantas fotos quer no total! 😊"
+            "ð· Foto 10x15: R$1,00/unidade\n"
+            "ð· Foto 15x21: R$1,50/unidade\n"
+            "ð§² Foto ImÃ£: R$2,50/unidade\n\n"
+            "Quer continuar com a gente? Me diz quantas fotos quer no total! ð"
         )
         estado["ultima_msg"] = resposta
         conversas[telefone] = estado
         return resposta
 
-    # ── Extrai número de pedido da mensagem ──────────────────────────
     numero = extrair_numero_pedido(msg_original)
 
-    # ══════════════════════════════════════════════════════════════════
-    # ETAPA: INICIO
-    # ══════════════════════════════════════════════════════════════════
     if etapa == "inicio":
         if numero:
             if pedido_existe(numero):
@@ -301,37 +324,32 @@ def responder_ana(telefone, mensagem, tem_midia=False):
                 produto_info = montar_info_produto(dados)
                 estado = {"etapa": "aguardando_imagens", "pedido": numero}
                 resposta = (
-                    f"Olá! 😊 Encontrei seu pedido *{numero}*."
+                    f"OlÃ¡! ð Encontrei seu pedido *{numero}*."
                     f"{produto_info}\n\n"
-                    "Me envie as fotos para prosseguirmos. Pode mandar todas de uma vez! 📸"
+                    "Me envie as fotos para prosseguirmos. Pode mandar todas de uma vez! ð¸"
                 )
             else:
                 resposta = (
-                    f"Oi! O pedido *{numero}* ainda não apareceu no nosso sistema.\n"
-                    "Aguarde alguns minutos após a confirmação do pagamento e tente novamente. "
-                    "Se o problema persistir, me avise! 😊"
+                    f"Oi! O pedido *{numero}* ainda nÃ£o apareceu no nosso sistema.\n"
+                    "Aguarde alguns minutos apÃ³s a confirmaÃ§Ã£o do pagamento e tente novamente. "
+                    "Se o problema persistir, me avise! ð"
                 )
         elif tem_midia:
-            # Foto chegou antes do número do pedido
             estado = {"etapa": "aguardando_pedido", "fotos_recebidas": 1}
             resposta = (
-                "Obrigada pela foto! 📸\n"
-                "Para vincular ao seu pedido, me informe o *número do pedido* da Shopee.\n"
-                "Você encontra no app em *Meus Pedidos*."
+                "Obrigada pela foto! ð¸\n"
+                "Para vincular ao seu pedido, me informe o *nÃºmero do pedido* da Shopee.\n"
+                "VocÃª encontra no app em *Meus Pedidos*."
             )
         else:
-            # Saudação ou mensagem inicial
             resposta = (
-                "Olá! Sou a Ana da *Personalizei Fotos* 📸\n\n"
-                "Obrigada pela sua compra! Para começar, me informe o "
-                "*número do seu pedido* da Shopee.\n"
-                "Você encontra no app em *Meus Pedidos*."
+                "OlÃ¡! Sou a Ana da *Personalizei Fotos* ð¸\n\n"
+                "Obrigada pela sua compra! Para comeÃ§ar, me informe o "
+                "*nÃºmero do seu pedido* da Shopee.\n"
+                "VocÃª encontra no app em *Meus Pedidos*."
             )
 
-    # ══════════════════════════════════════════════════════════════════
-    # ETAPA: AGUARDANDO NÚMERO (fotos chegaram antes do pedido)
-    # ══════════════════════════════════════════════════════════════════
-    elif etape == "aguardando_pedido":
+    elif etapa == "aguardando_pedido":
         if numero:
             if pedido_existe(numero):
                 dados = info_pedido(numero)
@@ -340,39 +358,29 @@ def responder_ana(telefone, mensagem, tem_midia=False):
                                  obs=f"Fotos recebidas em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}")
                 estado = {"etapa": "imagens_recebidas", "pedido": numero}
                 resposta = (
-                    f"Perfeito! Pedido *{numero}* vinculado às fotos. ✅\n"
-                    "Nossa equipe já foi notificada e vai iniciar a produção em breve.\n"
-                    "Prazo médio de entrega: *3 a 5 dias úteis*. Obrigada! 💜"
+                    f"Perfeito! Pedido *{numero}* vinculado Ã s fotos. â\n"
+                    "Nossa equipe jÃ¡ foi notificada e vai iniciar a produÃ§Ã£o em breve.\n"
+                    "Prazo mÃ©dio de entrega: *3 a 5 dias Ãºteis*. Obrigada! ð"
                 )
             else:
                 resposta = (
-                    f"O pedido *{numero}* ainda não está no sistema.\n"
+                    f"O pedido *{numero}* ainda nÃ£o estÃ¡ no sistema.\n"
                     "Aguarde alguns minutos e tente novamente."
                 )
         elif tem_midia:
-            # Mais fotos chegando, só conta silenciosamente
             fotos = estado.get("fotos_recebidas", 0) + 1
             estado["fotos_recebidas"] = fotos
-            # Repete pedido do número só se não foi a última mensagem
-            if "número do pedido" not in ultima_msg:
-                resposta = "Por favor, me informe o *número do pedido* para continuar."
-            else:
-                resposta = None  # Já pediu, não repete
+            resposta = None if "nÃºmero do pedido" in ultima_msg else (
+                "Por favor, me informe o *nÃºmero do pedido* para continuar."
+            )
         else:
-            # Mensagem de texto mas sem número de pedido
-            if "número do pedido" not in ultima_msg:
-                resposta = "Por favor, me informe o *número do pedido* da Shopee para continuar."
-            else:
-                resposta = None
+            resposta = None if "nÃºmero do pedido" in ultima_msg else (
+                "Por favor, me informe o *nÃºmero do pedido* da Shopee para continuar."
+            )
 
-    # ══════════════════════════════════════════════════════════════════
-    # ETAPA: AGUARDANDO IMAGENS
-    # ══════════════════════════════════════════════════════════════════
     elif etapa == "aguardando_imagens":
         pedido = estado.get("pedido", "")
-
         if numero and numero != pedido:
-            # Cliente informou número de outro pedido
             if pedido_existe(numero):
                 dados = info_pedido(numero)
                 atualizar_telefone(numero, telefone)
@@ -381,64 +389,55 @@ def responder_ana(telefone, mensagem, tem_midia=False):
                 resposta = (
                     f"Ok! Mudando para o pedido *{numero}*."
                     f"{produto_info}\n\n"
-                    "Me envie as fotos! 📷"
+                    "Me envie as fotos! ð·"
                 )
             else:
-                resposta = f"O pedido *{numero}* não foi encontrado. Verifique o número e tente novamente."
+                resposta = f"O pedido *{numero}* nÃ£o foi encontrado. Verifique o nÃºmero e tente novamente."
         elif tem_midia:
-            # Primeira foto recebida — confirma e passa para próxima etapa
             fotos = estado.get("fotos_recebidas", 0) + 1
             estado["fotos_recebidas"] = fotos
             atualizar_status(pedido, "Imagens recebidas",
                              obs=f"Imagem recebida em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}")
             if fotos == 1:
-                # Só confirma na primeira foto, não em cada uma
                 estado["etapa"] = "imagens_recebidas"
                 resposta = (
-                    "Imagens recebidas com sucesso! ✅\n"
-                    "Nossa equipe já foi notificada e vai iniciar a produção em breve.\n"
-                    "Prazo médio de entrega: *3 a 5 dias úteis*. Obrigada! 💜"
+                    "Imagens recebidas com sucesso â\n"
+                    "Nossa equipe jÃ¡ foi notificada e vai iniciar a produÃ§Ã£o em breve.\n"
+                    "Prazo mÃ©dio de entrega: *3 a 5 dias Ãºteis*. Obrigada! ð"
                 )
             else:
-                resposta = None  # Fotos adicionais chegam silenciosamente
+                resposta = None
         else:
-            # Texto enquanto espera fotos — apenas mantém estado
             resposta = None
 
-    # ══════════════════════════════════════════════════════════════════
-    # ETAPA: IMAGENS RECEBIDAS (em produção)
-    # ══════════════════════════════════════════════════════════════════
     elif etapa == "imagens_recebidas":
         pedido = estado.get("pedido", "")
-
         if tem_midia:
-            # Fotos adicionais — aceita silenciosamente
             fotos = estado.get("fotos_recebidas", 0) + 1
             estado["fotos_recebidas"] = fotos
             atualizar_status(pedido, "Imagens recebidas",
                              obs=f"Imagem adicional em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}")
             resposta = None
         elif numero and numero != pedido:
-            # Novo pedido
             if pedido_existe(numero):
                 dados = info_pedido(numero)
                 atualizar_telefone(numero, telefone)
                 produto_info = montar_info_produto(dados)
                 estado = {"etapa": "aguardando_imagens", "pedido": numero}
                 resposta = (
-                    f"Olá! Abrindo atendimento para o pedido *{numero}*."
+                    f"OlÃ¡! Abrindo atendimento para o pedido *{numero}*."
                     f"{produto_info}\n\n"
-                    "Me envie as fotos! 📸"
+                    "Me envie as fotos! ð¸"
                 )
             else:
-                resposta = f"O pedido *{numero}* não foi encontrado."
+                resposta = f"O pedido *{numero}* nÃ£o foi encontrado."
         else:
-            resposta = "Suas fotos estão em produção! 💜 Se precisar de algo, estou aqui."
+            resposta = "Suas fotos estÃ£o em produÃ§Ã£o! ð Se precisar de algo, estou aqui."
 
     else:
         estado = {"etapa": "inicio"}
         resposta = (
-            "Olá! Para um novo atendimento, me informe o *número do seu pedido* da Shopee. 😊"
+            "OlÃ¡! Para um novo atendimento, me informe o *nÃºmero do seu pedido* da Shopee. ð"
         )
 
     if resposta:
@@ -446,8 +445,7 @@ def responder_ana(telefone, mensagem, tem_midia=False):
     conversas[telefone] = estado
     return resposta
 
-
-# ─── Webhook WhatsApp ─────────────────────────────────────────────────────────
+# âââ Webhook WhatsApp âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp():
     telefone = request.form.get("From", "")
@@ -461,13 +459,11 @@ def whatsapp():
         resp.message(resposta_texto)
     return str(resp)
 
-
 @app.route("/", methods=["GET"])
 def health():
     return "Ana Bot OK", 200
 
-
-# Inicia thread IMAP no nível do módulo — funciona com gunicorn E flask dev
+# Inicia thread IMAP no nÃ­vel do mÃ³dulo â funciona com gunicorn E flask dev
 _imap_thread = threading.Thread(target=thread_gmail, daemon=True)
 _imap_thread.start()
 
