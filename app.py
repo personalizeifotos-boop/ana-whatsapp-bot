@@ -233,8 +233,10 @@ def verificar_gmail():
                         obs=f"Detectado via Gmail em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}"
                     )
                     novos += 1
+                    time.sleep(2)  # evita erro 429 da API do Google Sheets
             except Exception as e:
                 print(f"[IMAP] Erro ao processar email {eid}: {e}")
+                time.sleep(2)  # aguarda antes de continuar
             finally:
                 pedidos_processados.add(eid)
 
@@ -401,7 +403,7 @@ def responder_ana(telefone, mensagem, tem_midia=False):
             if fotos == 1:
                 estado["etapa"] = "imagens_recebidas"
                 resposta = (
-                    "Imagens recebidas com sucesso â\n"
+                    "Imagens recebidas com sucesso! â\n"
                     "Nossa equipe jÃ¡ foi notificada e vai iniciar a produÃ§Ã£o em breve.\n"
                     "Prazo mÃ©dio de entrega: *3 a 5 dias Ãºteis*. Obrigada! ð"
                 )
