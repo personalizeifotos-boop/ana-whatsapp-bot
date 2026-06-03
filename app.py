@@ -239,6 +239,11 @@ def verificar_gmail():
                         if m_kit:
                             sku = m_kit.group(1).strip().upper()
 
+                    # Simplifica SKU: mostra apenas "XX fotos"
+                    m_num = re.search(r'(\d+)\s*FOTO', sku.upper())
+                    if m_num:
+                        sku = m_num.group(1) + ' fotos'
+
                     # Cliente
                     mc = re.search(r'Envie o pedido para ([^\.\n,]+)', corpo)
                     if mc:
