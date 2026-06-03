@@ -22,7 +22,7 @@ SPREADSHEET_ID     = "1qbLhiP9g1I9Lp3LemmOw5qoNfW8y6wQyBzafseft6Fc"
 # Mapeamento em memoria: telefone -> numero_pedido
 telefone_pedido = {}
 
-# ââ Google Sheets
+# ââ Google Sheets ââââââââââââââââââââââââââââââââââââââââââââ
 
 def _gc():
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
@@ -81,7 +81,7 @@ def salvar_pedido(numero_pedido, produto="", quantidade="", sku="",
         ws = get_sheet("Pedidos")
         if ws is None:
             return
-        data = datetime.now(BRASILBA).strftime("%d/%m/%Y %H:%M")
+        data = datetime.now(BRASILIA).strftime("%d/%m/%Y %H:%M")
         ws.append_row([numero_pedido, data, produto, quantidade,
                        sku, cliente, prazo, telefone, status, obs])
         print(f"[Sheets] Pedido {numero_pedido} salvo.")
@@ -95,12 +95,14 @@ def salvar_imagem_pendente(phone, image_url, pedido=""):
         ws = get_sheet("Imagens", ["Telefone", "URL", "Data", "Status", "Pedido"])
         if ws is None:
             return
-        data = datetime.now(BRASILBA).strftime("%d/%m/%Y %H:%M")
+        data = datetime.now(BRASILIA).strftime("%d/%m/%Y %H:%M")
         ws.append_row([phone, image_url, data, "pendente", pedido])
         print(f"[Imagens] Registrada imagem de {phone} (pedido: {pedido or 'nao vinculado'})")
     except Exception as e:
         print(f"[Imagens] Erro ao registrar: {e}")
 
+
+# ââ Extracao do numero de pedido Shopee âââââââââââââââââââââ
 
 PEDIDO_REGEX = re.compile(r'\b([A-Z0-9]{10,20})\b')
 
@@ -140,13 +142,17 @@ def extrair_corpo_email(msg):
                     corpo = decoded
         except Exception:
             pass
+
     if not corpo and corpo_html:
         corpo = re.sub(r'<[^>]+>', ' ', corpo_html)
         corpo = re.sub(r'&nbsp;', ' ', corpo)
         corpo = re.sub(r'&amp;', '&', corpo)
         corpo = re.sub(r'\s+', ' ', corpo)
+
     return corpo
 
+
+# ââ Thread IMAP â monitora Gmail ââââââââââââââââââââââââââââ
 
 pedidos_processados = set()
 
@@ -161,6 +167,7 @@ def verificar_gmail():
         mail.select("inbox")
         _, msgs = mail.search(None, '(FROM "info@mail.shopee.com.br" SUBJECT "Hora de enviar")')
         ids = msgs[0].split()
+
         pedidos_na_planilha = set()
         try:
             ws = get_sheet("Pedidos")
@@ -169,6 +176,7 @@ def verificar_gmail():
                 pedidos_na_planilha = set(v.strip().upper() for v in col_a if v.strip())
         except Exception as e:
             print(f"[IMAP] Aviso ao carregar planilha: {e}")
+
         novos = 0
         for eid in ids:
             if eid in pedidos_processados:
@@ -177,39 +185,73 @@ def verificar_gmail():
                 _, data = mail.fetch(eid, "(RFC822)")
                 msg = email.message_from_bytes(data[0][1])
                 assunto = msg.get("Subject", "")
-                corpo = extrair_corpo_email(msg)
+                corpo   = extrair_corpo_email(msg)
+
                 m_subj = re.search(r'pedido\s+([A-Z0-9]{10,20})', assunto, re.IGNORECASE)
                 numero = (m_subj.group(1).upper() if m_subj
                           else (extrair_numero_pedido(assunto) or extrair_numero_pedido(corpo)))
+
                 if numero and numero.upper() not in pedidos_na_planilha:
-                    produto = quantidade = sku = cliente = prazo = ""
-                    m_prod = re.search(r'ID do pedido:\s*#?' + re.escape(numero) + r'[\s\S]{0,50}?([A-Za-z\U00C0-\U00FF][^\n\t]{10,})', corpo, re.IGNORECASE)
-                    if m_prod: produto = m_prod.group(1).strip().rstrip('.')
+                    produto    = ""
+                    quantidade = ""
+                    sku        = ""
+                    cliente    = ""
+                    prazo      = ""
+
+                    m_prod = re.search(
+                        r'ID do pedido:\s*#?' + re.escape(numero) + r'[\s\S]{0,50}?([A-Za-zÃ-Ãº][^\n\t]{10,})',
+                        corpo, re.IGNORECASE
+                    )
+                    if m_prod:
+                        produto = m_prod.group(1).strip().rstrip('.')
+
                     m_qtd = re.search(r'Quantidade\s+(\d+)', corpo)
-                    if m_qtd: quantidade = m_qtd.group(1).strip()
-                    m_sku = re.search(r'Varia[\U00E7\U00C3\U00E3o]{2,}[: s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE) or \
-                             re.search(r'SKU[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
-                    if m_sku: sku = re.sub(r'\d+-', '', m_sku.group(1).strip()).strip()
+                    if m_qtd:
+                        quantidade = m_qtd.group(1).strip()
+
+                    m_sku = re.search(r'Varia[Ã§Ã£o]{2,4}[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
+                    if not m_sku:
+                        m_sku = re.search(r'SKU[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
+                    if m_sku:
+                        sku = re.sub(r'^\d+[-\s]+', '', m_sku.group(1).strip())
+
                     if not sku:
-                        m_kit = re.search(r'(KIT\s+(?:AT[E\U00E9]\s+)?\d+\s+FOTOS' + '?)', corpo, re.IGNORECASE)
-                        if m_kit: sku = m_kit.group(1).strip().upper()
+                        m_kit = re.search(r'(KIT\s+(?:AT[EÃ]\s+)?\d+\s+FOTOS?)', corpo, re.IGNORECASE)
+                        if m_kit:
+                            sku = m_kit.group(1).strip().upper()
+
                     m_num = re.search(r'(\d+)\s*FOTO', sku.upper())
-                    if m_num: sku = m_num.group(1) + ' fotos'
+                    if m_num:
+                        sku = m_num.group(1) + ' fotos'
+
                     mc = re.search(r'Envie o pedido para ([^\.\n,]+)', corpo)
-                    if mc: cliente = mc.group(1).strip()
-                    mp = re.search(r'At[e\U00E9]\s+\d+\s+de\s+\w+', corpo, re.IGNORECASE)
-                    if mp: prazo = mp.group(0).strip()
-                    salvar_pedido(numero_pedido=numero, produto=produto, quantidade=quantidade, sku=sku, cliente=cliente, prazo=prazo, status="Pagamento confirmado", obs=f"Detectado via Gmail em {datetime.now(BRASILDIA.strftime('%d/%m/%Y %H:%M')}")
+                    if mc:
+                        cliente = mc.group(1).strip()
+
+                    mp = re.search(r'(At[eÃ©] \d+ de \w+)', corpo, re.IGNORECASE)
+                    if mp:
+                        prazo = mp.group(1).strip()
+
+                    salvar_pedido(
+                        numero_pedido=numero, produto=produto,
+                        quantidade=quantidade, sku=sku,
+                        cliente=cliente, prazo=prazo,
+                        status="Pagamento confirmado",
+                        obs=f"Detectado via Gmail em {datetime.now(BRASILIA).strftime('%d/%m/%Y %H:%M')}"
+                    )
                     pedidos_na_planilha.add(numero.upper())
                     novos += 1
                     time.sleep(3)
+
             except Exception as e:
-                print(f"[IMAP] Erro {eid}: {e}")
+                print(f"[IMAP] Erro email {eid}: {e}")
                 time.sleep(2)
             finally:
                 pedidos_processados.add(eid)
+
         print(f"[IMAP] {novos} novos pedidos.")
         mail.logout()
+
     except Exception as e:
         print(f"[IMAP] Erro: {e}")
 
@@ -221,27 +263,55 @@ def thread_gmail():
         time.sleep(60)
 
 
+# ââ Webhook WhatsApp (Z-API) ââââââââââââââââââââââââââââââââ
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp():
     try:
         data = request.get_json(force=True, silent=True) or {}
+
+        # Log resumido de tudo que chega (ajuda a debugar formato do Z-API)
+        print(f"[Webhook] type={data.get('type')} fromMe={data.get('fromMe')} phone={data.get('phone','')[:15]} keys={list(data.keys())[:8]}")
+
         if data.get("fromMe", False):
             return "ok", 200
-        phone = (data.get("phone", "").replace("@s.whatsapp.net", "").replace("@c.us", ""))
+
+        phone = (data.get("phone", "")
+                 .replace("@s.whatsapp.net", "")
+                 .replace("@c.us", ""))
         msg_type = data.get("type", "")
-        body = data.get("body", "") or ""
-        if msg_type == "chat":
+        body     = data.get("body", "") or ""
+
+        # Detecta imagem â Z-API pode usar type="image" ou ter campo "image"/"imageUrl" no payload
+        tem_imagem = (
+            msg_type == "image"
+            or "image" in data
+            or (isinstance(body, str) and body.startswith("http") and any(ext in body.lower() for ext in [".jpg", ".jpeg", ".png", ".webp", "cdn.z-api"]))
+        )
+
+        # URL da imagem: tenta varios campos que o Z-API pode usar
+        image_url = ""
+        if tem_imagem:
+            if isinstance(body, str) and body.startswith("http"):
+                image_url = body
+            elif data.get("imageUrl"):
+                image_url = data["imageUrl"]
+            elif isinstance(data.get("image"), dict):
+                image_url = data["image"].get("imageUrl") or data["image"].get("url", "")
+
+        if tem_imagem and image_url:
+            pedido_vinculado = telefone_pedido.get(phone, "")
+            salvar_imagem_pendente(phone, image_url, pedido_vinculado)
+
+        elif msg_type in ("chat", "text", "") and body and not body.startswith("http"):
             numero = extrair_numero_pedido(body)
             if numero and pedido_existe(numero):
                 telefone_pedido[phone] = numero
                 atualizar_telefone_na_planilha(numero, phone)
                 print(f"[Webhook] Pedido {numero} vinculado ao telefone {phone}")
-        elif msg_type == "image":
-            image_url = body
-            if image_url:
-                pedido_vinculado = telefone_pedido.get(phone, "")
-                salvar_imagem_pendente(phone, image_url, pedido_vinculado)
+
         return "ok", 200
+
     except Exception as e:
         print(f"[Webhook] Erro: {e}")
         return "ok", 200
