@@ -42,7 +42,7 @@ def get_sheet():
     except gspread.WorksheetNotFound:
         ws = sh.add_worksheet(title="Pedidos", rows=1000, cols=12)
         ws.append_row([
-            "NÃºmero do Pedido", "Data", "Produto", "Quantidade",
+            "Numero do Pedido", "Data", "Produto", "Quantidade",
             "SKU", "Cliente", "Prazo de Entrega",
             "Telefone", "Status", "Obs"
         ])
@@ -61,7 +61,7 @@ def salvar_pedido(numero_pedido, produto="â", quantidade="â", sku="â�
         print(f"[Sheets] Pedido {numero_pedido} salvo.")
     except Exception as e:
         print(f"[Sheets] Erro ao salvar: {e}")
-        raise  # RelanÃ§a para o caller saber que falhou
+        raise
 
 def atualizar_status(numero_pedido, novo_status, obs=""):
     try:
@@ -128,7 +128,7 @@ def extrair_numero_pedido(texto):
             return c
     return candidatos[0] if candidatos else None
 
-# âââ Thread IMAP â monitora Gmail a cada 60s
+# âââ Thread IMAP â monitora Gmail a cada 60s
 pedidos_processados = set()
 
 def extrair_corpo_email(msg):
@@ -161,7 +161,6 @@ def extrair_corpo_email(msg):
             pass
 
     if not corpo and corpo_html:
-        # Remove tags HTML para obter texto simples
         corpo = re.sub(r'<[^>]+>', ' ', corpo_html)
         corpo = re.sub(r'&nbsp;', ' ', corpo)
         corpo = re.sub(r'&amp;', '&', corpo)
@@ -177,18 +176,15 @@ def verificar_gmail():
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         mail.select("inbox")
-        # CORRIGIDO: FROM e SUBJECT corretos da Shopee Brasil
         _, msgs = mail.search(None, '(FROM "info@mail.shopee.com.br" SUBJECT "Hora de enviar")')
         ids = msgs[0].split()
         novos = 0
 
-        # Carrega todos os pedidos existentes na planilha UMA ÃNICA VEZ
-        # Evita fazer uma leitura da API por email (causa erro 429)
         pedidos_na_planilha = set()
         try:
             ws = get_sheet()
             if ws:
-                col_a = ws.col_values(1)  # Coluna A = NÃºmero do Pedido
+                col_a = ws.col_values(1)
                 pedidos_na_planilha = set(v.strip().upper() for v in col_a if v.strip())
                 print(f"[IMAP] {len(pedidos_na_planilha)} pedidos jÃ¡ existem na planilha.")
         except Exception as e:
@@ -203,7 +199,6 @@ def verificar_gmail():
                 assunto = msg.get("Subject", "")
                 corpo = extrair_corpo_email(msg)
 
-                # Extrai nÃºmero direto do assunto: "Hora de enviar o pedido XXXXXX"
                 m_subj = re.search(r'pedido\s+([A-Z0-9]{10,20})', assunto, re.IGNORECASE)
                 numero = m_subj.group(1).upper() if m_subj else (
                     extrair_numero_pedido(assunto) or extrair_numero_pedido(corpo)
@@ -216,7 +211,7 @@ def verificar_gmail():
                     cliente = "â"
                     prazo = "â"
 
-                    # Produto: linha/texto apÃ³s "ID do pedido:" (plain text ou HTML stripped)
+                    # Produto
                     m_prod = re.search(
                         r'ID do pedido:\s*#?' + re.escape(numero) + r'[\s\S]{0,50}?([A-Za-zÃ-Ãº][^\n\t]{10,})',
                         corpo, re.IGNORECASE
@@ -224,18 +219,33 @@ def verificar_gmail():
                     if m_prod:
                         produto = m_prod.group(1).strip().rstrip('.')
 
-                    # Quantidade: nÃºmero apÃ³s "Quantidade"
+                    # Quantidade
                     m_qtd = re.search(r'Quantidade\s+(\d+)', corpo)
                     if m_qtd:
                         quantidade = m_qtd.group(1).strip()
 
-                    # Cliente: "Envie o pedido para XXXX"
+                    # SKU â tenta "VariaÃ§Ã£o: XXXX" e depois "SKU: XXXX"
+                    m_sku = re.search(r'Varia[Ã§c][aÃ£]o[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
+                    if not m_sku:
+                        m_sku = re.search(r'SKU[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
+                    if m_sku:
+                        sku_raw = m_sku.group(1).strip()
+                        # Remove o ID numÃ©rico inicial se houver (ex: "21499081161-KIT 18 FOTOS" â "KIT 18 FOTOS")
+                        sku = re.sub(r'^\d+[-\s]+', '', sku_raw).strip()
+                    
+                    # Se nÃ£o achou nos padrÃµes acima, tenta padrÃ£o "KIT XX FOTOS" direto no corpo
+                    if sku == "â":
+                        m_kit = re.search(r'(KIT\s+(?:AT[EÃ]\s+)?\d+\s+FOTOS?)', corpo, re.IGNORECASE)
+                        if m_kit:
+                            sku = m_kit.group(1).strip().upper()
+
+                    # Cliente
                     mc = re.search(r'Envie o pedido para ([^\.\n,]+)', corpo)
                     if mc:
                         cliente = mc.group(1).strip()
 
                     # Prazo de entrega
-                    mp = re.search(r'(AtÃ© \d+ de \w+)', corpo)
+                    mp = re.search(r'(At[eÃ©] \d+ de \w+)', corpo, re.IGNORECASE)
                     if mp:
                         prazo = mp.group(1).strip()
 
@@ -248,7 +258,7 @@ def verificar_gmail():
                     )
                     pedidos_na_planilha.add(numero.upper())
                     novos += 1
-                    time.sleep(3)  # evita erro 429 da API do Google Sheets
+                    time.sleep(3)
             except Exception as e:
                 print(f"[IMAP] Erro ao processar email {eid}: {e}")
                 time.sleep(2)
@@ -304,10 +314,10 @@ def responder_ana(telefone, mensagem, tem_midia=False):
     if any(p in msg_lower for p in palavras_preco):
         resposta = (
             "Nossos preÃ§os:\n\n"
-            "ð· *Foto 10x15* â R$1,00/unidade\n"
-            "ð· *Foto 15x21* â R$1,50/unidade\n"
-            "ð§² *Foto ImÃ£ Geladeira* â R$2,50/unidade\n"
-            "ðï¸ *Foto Polaroide* â R$1,50/unidade\n\n"
+            "ð· *Foto 10x15* â R$1,00/unidade\n"
+            "ð· *Foto 15x21* â R$1,50/unidade\n"
+            "ð§² *Foto ImÃ£ Geladeira* â R$2,50/unidade\n"
+            "ð¼ï¸ *Foto Polaroide* â R$1,50/unidade\n\n"
             f"Para pagamentos:\n{PIX_INFO}"
         )
         estado["ultima_msg"] = resposta
@@ -317,7 +327,7 @@ def responder_ana(telefone, mensagem, tem_midia=False):
     if "cancel" in msg_lower and any(p in msg_lower for p in ["comprar", "maior", "mais", "pacote"]):
         resposta = (
             "Sim, pode cancelar direto no app da Shopee! ð\n\n"
-            "Mas se preferir, pode comprar a diferenÃ§a diretamente com a gente â "
+            "Mas se preferir, pode comprar a diferenÃ§a diretamente com a gente â "
             "aproveitamos esse pedido e enviamos tudo junto.\n\n"
             "ð· Foto 10x15: R$1,00/unidade\n"
             "ð· Foto 15x21: R$1,50/unidade\n"
@@ -374,7 +384,7 @@ def responder_ana(telefone, mensagem, tem_midia=False):
                 resposta = (
                     f"Perfeito! Pedido *{numero}* vinculado Ã s fotos. â\n"
                     "Nossa equipe jÃ¡ foi notificada e vai iniciar a produÃ§Ã£o em breve.\n"
-                    "Prazo mÃ©dio de entrega: *3 a 5 dias Ãºteis*. Obrigada! ð"
+                    "Prazo mÃ©dio de entrega: *3 a 5 dias Ãºteis*. Obrigada! ð"
                 )
             else:
                 resposta = (
@@ -417,7 +427,7 @@ def responder_ana(telefone, mensagem, tem_midia=False):
                 resposta = (
                     "Imagens recebidas com sucesso! â\n"
                     "Nossa equipe jÃ¡ foi notificada e vai iniciar a produÃ§Ã£o em breve.\n"
-                    "Prazo mÃ©dio de entrega: *3 a 5 dias Ãºteis*. Obrigada! ð"
+                    "Prazo mÃ©dio de entrega: *3 a 5 dias Ãºteis*. Obrigada! ð"
                 )
             else:
                 resposta = None
@@ -446,7 +456,7 @@ def responder_ana(telefone, mensagem, tem_midia=False):
             else:
                 resposta = f"O pedido *{numero}* nÃ£o foi encontrado."
         else:
-            resposta = "Suas fotos estÃ£o em produÃ§Ã£o! ð Se precisar de algo, estou aqui."
+            resposta = "Suas fotos estÃ£o em produÃ§Ã£o! ð Se precisar de algo, estou aqui."
 
     else:
         estado = {"etapa": "inicio"}
