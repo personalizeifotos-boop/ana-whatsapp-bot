@@ -19,10 +19,7 @@ GMAIL_USER         = os.environ.get("GMAIL_USER")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 SPREADSHEET_ID     = "1qbLhiP9g1I9Lp3LemmOw5qoNfW8y6wQyBzafseft6Fc"
 
-# Mapeamento em memoria: telefone -> numero_pedido
 telefone_pedido = {}
-
-# -- Google Sheets ----------------------------------------------------
 
 def _gc():
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
@@ -102,8 +99,6 @@ def salvar_imagem_pendente(phone, image_url, pedido=""):
         print(f"[Imagens] Erro ao registrar: {e}")
 
 
-# -- Extracao do numero de pedido Shopee -----------------------------
-
 PEDIDO_REGEX = re.compile(r'\b([A-Z0-9]{10,20})\b')
 
 
@@ -151,8 +146,6 @@ def extrair_corpo_email(msg):
 
     return corpo
 
-
-# -- Thread IMAP - monitora Gmail ------------------------------------
 
 pedidos_processados = set()
 
@@ -263,14 +256,13 @@ def thread_gmail():
         time.sleep(60)
 
 
-# -- Webhook WhatsApp (Z-API) ----------------------------------------
-
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp():
     try:
         data = request.get_json(force=True, silent=True) or {}
 
-        print(f"[Webhook] type={data.get('type')} fromMe={data.get('fromMe')} phone={data.get('phone','')[:15]} keys={list(data.keys())[:8]}")
+        # Log completo para identificar formato da Evolution API
+        print(f"[Webhook] PAYLOAD: {json.dumps(data)[:800]}")
 
         if data.get("fromMe", False):
             return "ok", 200
