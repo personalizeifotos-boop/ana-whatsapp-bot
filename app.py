@@ -261,38 +261,49 @@ def whatsapp():
     try:
         data = request.get_json(force=True, silent=True) or {}
 
-        # Log completo para identificar formato da Evolution API
+        # Log completo
         print(f"[Webhook] PAYLOAD: {json.dumps(data)[:800]}")
 
+        # Evolution API usa fromMe em ingles mas outros campos em portugues
         if data.get("fromMe", False):
             return "ok", 200
 
         phone = (data.get("phone", "")
                  .replace("@s.whatsapp.net", "")
                  .replace("@c.us", ""))
-        msg_type = data.get("type", "")
-        body     = data.get("body", "") or ""
 
+        # Evolution API: "tipo" (PT) ou "type" (EN)
+        msg_type = data.get("type") or data.get("tipo") or ""
+        # Evolution API: "body" ou "text" ou "texto"
+        body = data.get("body") or data.get("text") or data.get("texto") or ""
+
+        # Detecta imagem - Evolution API usa "imagem" (PT), Z-API usa "image" (EN)
         tem_imagem = (
-            msg_type == "image"
+            msg_type in ("image", "imagem")
             or "image" in data
-            or (isinstance(body, str) and body.startswith("http") and any(ext in body.lower() for ext in [".jpg", ".jpeg", ".png", ".webp", "cdn.z-api"]))
+            or "imagem" in data
+            or (isinstance(body, str) and body.startswith("http") and any(ext in body.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]))
         )
 
+        # URL da imagem: tenta todos os campos possiveis
         image_url = ""
         if tem_imagem:
             if isinstance(body, str) and body.startswith("http"):
                 image_url = body
             elif data.get("imageUrl"):
                 image_url = data["imageUrl"]
+            elif isinstance(data.get("imagem"), dict):
+                image_url = data["imagem"].get("imageUrl") or data["imagem"].get("url", "")
             elif isinstance(data.get("image"), dict):
                 image_url = data["image"].get("imageUrl") or data["image"].get("url", "")
+
+        print(f"[Webhook] phone={phone} tipo={msg_type} tem_imagem={tem_imagem} image_url={image_url[:80] if image_url else ''} body={str(body)[:60]}")
 
         if tem_imagem and image_url:
             pedido_vinculado = telefone_pedido.get(phone, "")
             salvar_imagem_pendente(phone, image_url, pedido_vinculado)
 
-        elif msg_type in ("chat", "text", "") and body and not body.startswith("http"):
+        elif body and not body.startswith("http"):
             numero = extrair_numero_pedido(body)
             if numero and pedido_existe(numero):
                 telefone_pedido[phone] = numero
