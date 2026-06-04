@@ -19,7 +19,10 @@ GMAIL_USER         = os.environ.get("GMAIL_USER")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 SPREADSHEET_ID     = "1qbLhiP9g1I9Lp3LemmOw5qoNfW8y6wQyBzafseft6Fc"
 
+# Mapeamento em memoria: telefone -> numero_pedido
 telefone_pedido = {}
+
+# ── Google Sheets ────────────────────────────────────────────
 
 def _gc():
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
@@ -107,6 +110,30 @@ def salvar_pedido(numero_pedido, produto="", quantidade="", sku="",
         raise
 
 
+def preencher_pedido_retroativo(phone, numero_pedido):
+    """Preenche coluna E (Pedido) em todas as linhas da aba Imagens
+    que tenham o mesmo telefone e coluna E vazia."""
+    try:
+        ws = get_sheet("Imagens")
+        if ws is None:
+            return
+        linhas = ws.get_all_values()
+        phone_norm = re.sub(r'\D', '', phone)
+        suf = phone_norm[-11:] if len(phone_norm) >= 11 else phone_norm
+        updates = []
+        for i, linha in enumerate(linhas[1:], start=2):  # linha 2 em diante (pula cabecalho)
+            tel = re.sub(r'\D', '', linha[0].strip()) if linha else ""
+            tel_suf = tel[-11:] if len(tel) >= 11 else tel
+            pedido_atual = linha[4].strip() if len(linha) >= 5 else ""
+            if suf == tel_suf and not pedido_atual:
+                updates.append({'range': f'E{i}', 'values': [[numero_pedido]]})
+        if updates:
+            ws.batch_update(updates)
+            print(f"[Imagens] {len(updates)} imagens retroativas vinculadas ao pedido {numero_pedido} ({phone})")
+    except Exception as e:
+        print(f"[Imagens] Erro ao preencher retroativo: {e}")
+
+
 def salvar_imagem_pendente(phone, image_url, pedido=""):
     try:
         ws = get_sheet("Imagens", ["Telefone", "URL", "Data", "Status", "Pedido"])
@@ -118,6 +145,8 @@ def salvar_imagem_pendente(phone, image_url, pedido=""):
     except Exception as e:
         print(f"[Imagens] Erro ao registrar: {e}")
 
+
+# ── Extracao do numero de pedido Shopee ─────────────────────────
 
 PEDIDO_REGEX = re.compile(r'\b([A-Z0-9]{10,20})\b')
 
@@ -167,6 +196,8 @@ def extrair_corpo_email(msg):
     return corpo
 
 
+# ── Thread IMAP – monitora Gmail ──────────────────────────
+
 pedidos_processados = set()
 
 
@@ -212,7 +243,7 @@ def verificar_gmail():
                     prazo      = ""
 
                     m_prod = re.search(
-                        r'ID do pedido:\s*#?' + re.escape(numero) + r'[\s\S]{0,50}?([A-Za-z][^\n\t]{10,})',
+                        r'ID do pedido:\s*#?' + re.escape(numero) + r'[\s\S]{0,50}?([A-Za-z\xC0-\xFF][^\n\t]{10,})',
                         corpo, re.IGNORECASE
                     )
                     if m_prod:
@@ -222,14 +253,14 @@ def verificar_gmail():
                     if m_qtd:
                         quantidade = m_qtd.group(1).strip()
 
-                    m_sku = re.search(r'Varia[cao]{2,4}[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
+                    m_sku = re.search(r'Varia[\xE7\xE3o]{2,4}[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
                     if not m_sku:
                         m_sku = re.search(r'SKU[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
                     if m_sku:
                         sku = re.sub(r'^\d+[-\s]+', '', m_sku.group(1).strip())
 
                     if not sku:
-                        m_kit = re.search(r'(KIT\s+(?:AT[EE]\s+)?\d+\s+FOTOS?)', corpo, re.IGNORECASE)
+                        m_kit = re.search(r'(KIT\s+(?:AT[E\xC9]\s+)?\d+\s+FOTOS?)', corpo, re.IGNORECASE)
                         if m_kit:
                             sku = m_kit.group(1).strip().upper()
 
@@ -241,7 +272,7 @@ def verificar_gmail():
                     if mc:
                         cliente = mc.group(1).strip()
 
-                    mp = re.search(r'(At[ee] \d+ de \w+)', corpo, re.IGNORECASE)
+                    mp = re.search(r'(At[e\xE9] \d+ de \w+)', corpo, re.IGNORECASE)
                     if mp:
                         prazo = mp.group(1).strip()
 
@@ -276,13 +307,17 @@ def thread_gmail():
         time.sleep(60)
 
 
+# ── Webhook WhatsApp (Z-API) ──────────────────────────────
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp():
     try:
         data = request.get_json(force=True, silent=True) or {}
 
+        # Log completo
         print(f"[Webhook] PAYLOAD: {json.dumps(data)[:800]}")
 
+        # Evolution API usa fromMe em ingles mas outros campos em portugues
         if data.get("fromMe", False):
             return "ok", 200
 
@@ -290,8 +325,10 @@ def whatsapp():
                  .replace("@s.whatsapp.net", "")
                  .replace("@c.us", ""))
 
+        # Evolution API: "tipo" (PT) ou "type" (EN)
         msg_type = data.get("type") or data.get("tipo") or ""
 
+        # Evolution API: "text" e "imagem" sao dicionarios aninhados
         def extrair_texto(d):
             v = d.get("body") or d.get("text") or d.get("texto") or ""
             if isinstance(v, dict):
@@ -309,13 +346,15 @@ def whatsapp():
 
         body = extrair_texto(data)
 
+        # Detecta imagem — Evolution API usa "imagem" (PT), Z-API usa "image" (EN)
         tem_imagem = (
             msg_type in ("image", "imagem")
             or "image" in data
             or "imagem" in data
-            or (body and body.startswith("http") and any(ext in body.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]))
+            or (isinstance(body, str) and body.startswith("http") and any(ext in body.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]))
         )
 
+        # URL da imagem: tenta todos os campos possiveis
         image_url = ""
         if tem_imagem:
             if body and body.startswith("http"):
@@ -341,6 +380,7 @@ def whatsapp():
                 telefone_pedido[phone] = numero
                 atualizar_telefone_na_planilha(numero, phone)
                 print(f"[Webhook] Pedido {numero} vinculado ao telefone {phone}")
+                preencher_pedido_retroativo(phone, numero)
 
         return "ok", 200
 
