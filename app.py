@@ -5,11 +5,14 @@ import imaplib
 import email
 import threading
 import time
+import urllib.request as _url_req
 import gspread
 import pytz
 from datetime import datetime
 from flask import Flask, request
 from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaInMemoryUpload
 
 BRASILIA = pytz.timezone("America/Sao_Paulo")
 
@@ -21,6 +24,57 @@ SPREADSHEET_ID     = "1qbLhiP9g1I9Lp3LemmOw5qoNfW8y6wQyBzafseft6Fc"
 
 # Mapeamento em memoria: telefone -> numero_pedido
 telefone_pedido = {}
+
+
+# ── Google Drive — upload imediato de imagens ────────────────
+
+def _upload_imagem_drive(image_url, phone):
+    """Baixa imagem da URL temporaria e faz upload para Google Drive.
+    Retorna URL permanente do Drive (ou URL original em caso de falha)."""
+    try:
+        req = _url_req.Request(image_url, headers={"User-Agent": "Mozilla/5.0"})
+        with _url_req.urlopen(req, timeout=15) as resp:
+            image_bytes = resp.read()
+
+        if len(image_bytes) < 500:
+            print(f"[Drive] Imagem muito pequena ({len(image_bytes)} bytes) — URL provavelmente expirada")
+            return image_url
+
+        creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+        if not creds_json:
+            print("[Drive] GOOGLE_CREDENTIALS_JSON nao configurado")
+            return image_url
+
+        creds_dict = json.loads(creds_json)
+        creds = Credentials.from_service_account_info(
+            creds_dict,
+            scopes=["https://www.googleapis.com/auth/drive.file"]
+        )
+        service = build("drive", "v3", credentials=creds)
+
+        timestamp = datetime.now(BRASILIA).strftime("%Y%m%d_%H%M%S")
+        filename = f"foto_{phone}_{timestamp}.jpg"
+
+        media = MediaInMemoryUpload(image_bytes, mimetype="image/jpeg")
+        file_obj = service.files().create(
+            body={"name": filename},
+            media_body=media,
+            fields="id"
+        ).execute()
+        file_id = file_obj.get("id")
+
+        service.permissions().create(
+            fileId=file_id,
+            body={"type": "anyone", "role": "reader"}
+        ).execute()
+
+        drive_url = f"https://drive.google.com/uc?id={file_id}&export=download"
+        print(f"[Drive] Upload OK: {filename} ({len(image_bytes)//1024}KB) id={file_id}")
+        return drive_url
+
+    except Exception as e:
+        print(f"[Drive] Erro no upload: {e} — usando URL original")
+        return image_url
 
 # ── Google Sheets ────────────────────────────────────────────
 
@@ -121,7 +175,7 @@ def preencher_pedido_retroativo(phone, numero_pedido):
         phone_norm = re.sub(r'\D', '', phone)
         suf = phone_norm[-11:] if len(phone_norm) >= 11 else phone_norm
         updates = []
-        for i, linha in enumerate(linhas[1:], start=2):  # linha 2 em diante (pula cabecalho)
+        for i, linha in enumerate(linhas[1:], start=2):
             tel = re.sub(r'\D', '', linha[0].strip()) if linha else ""
             tel_suf = tel[-11:] if len(tel) >= 11 else tel
             pedido_atual = linha[4].strip() if len(linha) >= 5 else ""
@@ -307,17 +361,15 @@ def thread_gmail():
         time.sleep(60)
 
 
-# ── Webhook WhatsApp (Z-API) ──────────────────────────────
+# ── Webhook WhatsApp ──────────────────────────────────────
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp():
     try:
         data = request.get_json(force=True, silent=True) or {}
 
-        # Log completo
         print(f"[Webhook] PAYLOAD: {json.dumps(data)[:800]}")
 
-        # Evolution API usa fromMe em ingles mas outros campos em portugues
         if data.get("fromMe", False):
             return "ok", 200
 
@@ -325,10 +377,8 @@ def whatsapp():
                  .replace("@s.whatsapp.net", "")
                  .replace("@c.us", ""))
 
-        # Evolution API: "tipo" (PT) ou "type" (EN)
         msg_type = data.get("type") or data.get("tipo") or ""
 
-        # Evolution API: "text" e "imagem" sao dicionarios aninhados
         def extrair_texto(d):
             v = d.get("body") or d.get("text") or d.get("texto") or ""
             if isinstance(v, dict):
@@ -346,7 +396,6 @@ def whatsapp():
 
         body = extrair_texto(data)
 
-        # Detecta imagem — Evolution API usa "imagem" (PT), Z-API usa "image" (EN)
         tem_imagem = (
             msg_type in ("image", "imagem")
             or "image" in data
@@ -354,7 +403,6 @@ def whatsapp():
             or (isinstance(body, str) and body.startswith("http") and any(ext in body.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]))
         )
 
-        # URL da imagem: tenta todos os campos possiveis
         image_url = ""
         if tem_imagem:
             if body and body.startswith("http"):
@@ -367,12 +415,13 @@ def whatsapp():
         if tem_imagem and image_url:
             pedido_vinculado = telefone_pedido.get(phone, "")
             if not pedido_vinculado:
-                # Fallback: busca na planilha se o telefone ja esta vinculado
                 pedido_vinculado = buscar_pedido_por_telefone(phone)
                 if pedido_vinculado:
                     telefone_pedido[phone] = pedido_vinculado
                     print(f"[Webhook] Pedido {pedido_vinculado} encontrado na planilha para {phone}")
-            salvar_imagem_pendente(phone, image_url, pedido_vinculado)
+            # Baixa imagem imediatamente e sobe ao Drive (URL permanente)
+            drive_url = _upload_imagem_drive(image_url, phone)
+            salvar_imagem_pendente(phone, drive_url, pedido_vinculado)
 
         elif body and not body.startswith("http"):
             numero = extrair_numero_pedido(body)
