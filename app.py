@@ -48,6 +48,26 @@ def get_sheet(nome="Pedidos", colunas=None):
         return ws
 
 
+def buscar_pedido_por_telefone(phone):
+    """Busca na aba Pedidos se o telefone ja esta vinculado a algum pedido."""
+    try:
+        ws = get_sheet("Pedidos")
+        if ws is None:
+            return ""
+        linhas = ws.get_all_values()
+        phone_norm = re.sub(r'\D', '', phone)
+        suf = phone_norm[-11:] if len(phone_norm) >= 11 else phone_norm
+        for linha in linhas[1:]:
+            if len(linha) >= 8 and linha[7].strip():
+                tel = re.sub(r'\D', '', linha[7].strip())
+                tel_suf = tel[-11:] if len(tel) >= 11 else tel
+                if suf == tel_suf:
+                    return linha[0].strip()
+    except Exception as e:
+        print(f"[Webhook] Erro ao buscar telefone na planilha: {e}")
+    return ""
+
+
 def pedido_existe(numero):
     try:
         ws = get_sheet("Pedidos")
@@ -272,7 +292,6 @@ def whatsapp():
 
         msg_type = data.get("type") or data.get("tipo") or ""
 
-        # Evolution API: text e imagem sao dicionarios aninhados
         def extrair_texto(d):
             v = d.get("body") or d.get("text") or d.get("texto") or ""
             if isinstance(v, dict):
@@ -308,6 +327,12 @@ def whatsapp():
 
         if tem_imagem and image_url:
             pedido_vinculado = telefone_pedido.get(phone, "")
+            if not pedido_vinculado:
+                # Fallback: busca na planilha se o telefone ja esta vinculado
+                pedido_vinculado = buscar_pedido_por_telefone(phone)
+                if pedido_vinculado:
+                    telefone_pedido[phone] = pedido_vinculado
+                    print(f"[Webhook] Pedido {pedido_vinculado} encontrado na planilha para {phone}")
             salvar_imagem_pendente(phone, image_url, pedido_vinculado)
 
         elif body and not body.startswith("http"):
