@@ -13,7 +13,7 @@ from google.oauth2.service_account import Credentials
 
 BRASILIA = pytz.timezone("America/Sao_Paulo")
 
-app = Flash(__name__)
+app = Flask(__name__)
 
 GMAIL_USER         = os.environ.get("GMAIL_USER")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
@@ -22,7 +22,7 @@ SPREADSHEET_ID     = "1qbLhiP9g1I9Lp3LemmOw5qoNfW8y6wQyBzafseft6Fc"
 # Mapeamento em memoria: telefone -> numero_pedido
 telefone_pedido = {}
 
-# ââ Google Sheets ââââââââââââââââââââââââââââââââââââââââââââ
+# -- Google Sheets ----------------------------------------------------
 
 def _gc():
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
@@ -102,7 +102,7 @@ def salvar_imagem_pendente(phone, image_url, pedido=""):
         print(f"[Imagens] Erro ao registrar: {e}")
 
 
-# ââ Extracao do numero de pedido Shopee âââââââââââââââââââââ
+# -- Extracao do numero de pedido Shopee -----------------------------
 
 PEDIDO_REGEX = re.compile(r'\b([A-Z0-9]{10,20})\b')
 
@@ -152,7 +152,7 @@ def extrair_corpo_email(msg):
     return corpo
 
 
-# ââ Thread IMAP â monitora Gmail ââââââââââââââââââââââââââââ
+# -- Thread IMAP - monitora Gmail ------------------------------------
 
 pedidos_processados = set()
 
@@ -199,7 +199,7 @@ def verificar_gmail():
                     prazo      = ""
 
                     m_prod = re.search(
-                        r'ID do pedido:\s*#?' + re.escape(numero) + r'[\s\S]{0,50}?([A-Za-zÃ-Ãº][^\n\t]{10,})',
+                        r'ID do pedido:\s*#?' + re.escape(numero) + r'[\s\S]{0,50}?([A-Za-z][^\n\t]{10,})',
                         corpo, re.IGNORECASE
                     )
                     if m_prod:
@@ -209,14 +209,14 @@ def verificar_gmail():
                     if m_qtd:
                         quantidade = m_qtd.group(1).strip()
 
-                    m_sku = re.search(r'Varia[Ã§Ã£o]{2,4}[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
+                    m_sku = re.search(r'Varia[cao]{2,4}[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
                     if not m_sku:
                         m_sku = re.search(r'SKU[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
                     if m_sku:
                         sku = re.sub(r'^\d+[-\s]+', '', m_sku.group(1).strip())
 
                     if not sku:
-                        m_kit = re.search(r'(KIT\s+(?:AT[EÃ]\s+)?\d+\s+FOTOS?)', corpo, re.IGNORECASE)
+                        m_kit = re.search(r'(KIT\s+(?:AT[EE]\s+)?\d+\s+FOTOS?)', corpo, re.IGNORECASE)
                         if m_kit:
                             sku = m_kit.group(1).strip().upper()
 
@@ -228,7 +228,7 @@ def verificar_gmail():
                     if mc:
                         cliente = mc.group(1).strip()
 
-                    mp = re.search(r'(At[eÃ©] \d+ de \w+)', corpo, re.IGNORECASE)
+                    mp = re.search(r'(At[ee] \d+ de \w+)', corpo, re.IGNORECASE)
                     if mp:
                         prazo = mp.group(1).strip()
 
@@ -263,14 +263,13 @@ def thread_gmail():
         time.sleep(60)
 
 
-# ââ Webhook WhatsApp (Z-API) ââââââââââââââââââââââââââââââââ
+# -- Webhook WhatsApp (Z-API) ----------------------------------------
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp():
     try:
         data = request.get_json(force=True, silent=True) or {}
 
-        # Log resumido de tudo que chega (ajuda a debugar formato do Z-API)
         print(f"[Webhook] type={data.get('type')} fromMe={data.get('fromMe')} phone={data.get('phone','')[:15]} keys={list(data.keys())[:8]}")
 
         if data.get("fromMe", False):
@@ -282,14 +281,12 @@ def whatsapp():
         msg_type = data.get("type", "")
         body     = data.get("body", "") or ""
 
-        # Detecta imagem â Z-API pode usar type="image" ou ter campo "image"/"imageUrl" no payload
         tem_imagem = (
             msg_type == "image"
             or "image" in data
             or (isinstance(body, str) and body.startswith("http") and any(ext in body.lower() for ext in [".jpg", ".jpeg", ".png", ".webp", "cdn.z-api"]))
         )
 
-        # URL da imagem: tenta varios campos que o Z-API pode usar
         image_url = ""
         if tem_imagem:
             if isinstance(body, str) and body.startswith("http"):
