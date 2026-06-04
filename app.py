@@ -3,7 +3,7 @@ import re
 import json
 import imaplib
 import email
-import threading
+import threadingh
 import time
 import urllib.request as _url_req
 import gspread
@@ -122,7 +122,8 @@ def _upload_imagem_drive(image_url, phone):
         )
         service = build("drive", "v3", credentials=creds)
         timestamp = datetime.now(BRASILIA).strftime("%Y%m%d_%H%M%S")
-        filename  = f"foto_{re.sub(r\"\\D\",'',phone)}_{timestamp}.jpg"
+        phone_clean = re.sub(r'\D', '', phone)
+        filename    = f"foto_{phone_clean}_{timestamp}.jpg"
         media     = MediaInMemoryUpload(image_bytes, mimetype="image/jpeg")
         file_obj  = service.files().create(body={"name": filename}, media_body=media, fields="id").execute()
         file_id = file_obj.get("id")
