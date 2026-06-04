@@ -261,10 +261,8 @@ def whatsapp():
     try:
         data = request.get_json(force=True, silent=True) or {}
 
-        # Log completo
         print(f"[Webhook] PAYLOAD: {json.dumps(data)[:800]}")
 
-        # Evolution API usa fromMe em ingles mas outros campos em portugues
         if data.get("fromMe", False):
             return "ok", 200
 
@@ -272,30 +270,39 @@ def whatsapp():
                  .replace("@s.whatsapp.net", "")
                  .replace("@c.us", ""))
 
-        # Evolution API: "tipo" (PT) ou "type" (EN)
         msg_type = data.get("type") or data.get("tipo") or ""
-        # Evolution API: "body" ou "text" ou "texto"
-        body = data.get("body") or data.get("text") or data.get("texto") or ""
 
-        # Detecta imagem - Evolution API usa "imagem" (PT), Z-API usa "image" (EN)
+        # Evolution API: text e imagem sao dicionarios aninhados
+        def extrair_texto(d):
+            v = d.get("body") or d.get("text") or d.get("texto") or ""
+            if isinstance(v, dict):
+                return v.get("message") or v.get("body") or v.get("text") or ""
+            return str(v) if v else ""
+
+        def extrair_image_url_aninhado(d):
+            for chave in ("imagem", "image"):
+                v = d.get(chave)
+                if isinstance(v, dict):
+                    return v.get("imageUrl") or v.get("url") or v.get("mediaUrl") or ""
+                if isinstance(v, str) and v.startswith("http"):
+                    return v
+            return d.get("imageUrl") or d.get("mediaUrl") or ""
+
+        body = extrair_texto(data)
+
         tem_imagem = (
             msg_type in ("image", "imagem")
             or "image" in data
             or "imagem" in data
-            or (isinstance(body, str) and body.startswith("http") and any(ext in body.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]))
+            or (body and body.startswith("http") and any(ext in body.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]))
         )
 
-        # URL da imagem: tenta todos os campos possiveis
         image_url = ""
         if tem_imagem:
-            if isinstance(body, str) and body.startswith("http"):
+            if body and body.startswith("http"):
                 image_url = body
-            elif data.get("imageUrl"):
-                image_url = data["imageUrl"]
-            elif isinstance(data.get("imagem"), dict):
-                image_url = data["imagem"].get("imageUrl") or data["imagem"].get("url", "")
-            elif isinstance(data.get("image"), dict):
-                image_url = data["image"].get("imageUrl") or data["image"].get("url", "")
+            else:
+                image_url = extrair_image_url_aninhado(data)
 
         print(f"[Webhook] phone={phone} tipo={msg_type} tem_imagem={tem_imagem} image_url={image_url[:80] if image_url else ''} body={str(body)[:60]}")
 
