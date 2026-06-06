@@ -363,6 +363,15 @@ def salvar_imagem_pendente(phone, image_url, pedido="", tipo=""):
         if ws is None:
             return
         data = datetime.now(BRASILIA).strftime("%d/%m/%Y %H:%M")
+        # Fix 1: Dedup — ignora URL já registrada (Z-API duplica eventos)
+        suf = re.sub(r'\D', '', phone)
+        suf = suf[-11:] if len(suf) >= 11 else suf
+        for linha in ws.get_all_values()[1:]:
+            tel = re.sub(r'\D', '', linha[0].strip()) if linha else ""
+            tel_suf = tel[-11:] if len(tel) >= 11 else tel
+            if tel_suf == suf and len(linha) > 1 and linha[1].strip() == image_url:
+                print(f"[Imagens] URL duplicada ignorada: {phone}")
+                return
         ws.append_row([phone, image_url, data, "pendente", pedido, tipo])
         print(f"[Imagens] Registrada: {phone} (pedido: {pedido or 'nao vinculado'}, tipo: {tipo or '-'})")
     except Exception as e:
@@ -572,6 +581,9 @@ def vincular_pedido(phone, numero_pedido):
     # Vincula retroativamente as imagens que chegaram antes do pedido
     qtd_retro = preencher_pedido_retroativo(phone, numero_pedido)
     if qtd_retro > 0:
+        # Fix 2: limita pelo contador em memória (evita duplicatas do Z-API)
+        if estado["imgs_antes_pedido"] > 0:
+        qtd_retro = min(qtd_retro, estado["imgs_antes_pedido"])
         estado["fotos_recebidas"] = qtd_retro
         print(f"[Ana] {qtd_retro} fotos retroativas para {phone}")
 
