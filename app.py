@@ -1287,16 +1287,24 @@ def whatsapp():
         body = extrair_texto(data)
 
         # ── Detecta mensagem deletada/revogada pelo cliente ───────
+        # Z-API pode usar vários campos diferentes para indicar deleção
+        tipo_lower = str(msg_type).lower()
         is_deleted = (
             data.get("isRevoked") is True
+            or data.get("revoked") is True
             or data.get("deleted") is True
-            or str(msg_type).lower() in ("revoked", "deleted", "messagerevoked", "delete")
+            or data.get("isDeleted") is True
+            or tipo_lower in ("revoked", "deleted", "messagerevoked", "delete",
+                              "revokedmessage", "deletedmessage", "revoke")
+            or "revok" in tipo_lower
+            or "delet" in tipo_lower
         )
         if is_deleted:
+            print(f"[Ana] Mensagem deletada detectada de {phone} (type={msg_type})")
             estado = get_estado(phone)
             if estado["status"] == "aguardando_fotos" and estado["fotos_recebidas"] > 0:
                 estado["fotos_recebidas"] = max(0, estado["fotos_recebidas"] - 1)
-                print(f"[Ana] Foto deletada por {phone}: agora {estado['fotos_recebidas']}/{estado['limite_fotos']}")
+                print(f"[Ana] Foto deletada: agora {estado['fotos_recebidas']}/{estado['limite_fotos']}")
                 iniciar_timer(phone, 10, lambda: reavaliar_apos_delecao(phone))
             return "ok", 200
 
@@ -1333,6 +1341,12 @@ def whatsapp():
      # ── Saudação automática (primeiro contato) ────────────────────────────
         estado = get_estado(phone)
         if estado["status"] == "novo":
+            # Sem conteúdo real (deletado, sistema, etc.) → ignora silenciosamente
+            body_vazio = not body or not body.strip()
+            if body_vazio and not tem_imagem:
+                print(f"[Ana] Webhook sem conteúdo de {phone} ignorado (tipo={msg_type})")
+                return "ok", 200
+
             historico = carregar_cliente(phone)
 
             if historico and historico["total_pedidos"] > 0:
@@ -1341,33 +1355,26 @@ def whatsapp():
                 if nome:
                     estado["nome_cliente"] = nome
 
-                if tem_imagem:
-                    # Fotos chegaram após reinício do servidor
-                    # Restaura último pedido silenciosamente sem mandar saudação
-                    ultimo = historico.get("ultimo_pedido", "")
-                    if ultimo:
-                        estado["pedido"] = ultimo
-                        # Restaura produto/sku/limite da planilha
-                        dados_ped = buscar_pedido_na_planilha(ultimo)
-                        if dados_ped:
-                            estado["produto"] = dados_ped.get("produto", "")
-                            estado["sku"] = dados_ped.get("sku", "")
-                            estado["limite_fotos"] = extrair_limite_fotos(dados_ped.get("sku", ""))
-                        # Restaura contagem de fotos já recebidas
-                        fotos_ja = contar_imagens_pedido(ultimo)
-                        estado["fotos_recebidas"] = fotos_ja
-                        estado["status"] = "aguardando_fotos"
-                        print(f"[Ana] Reinício com foto: restaurando pedido {ultimo} ({fotos_ja} fotos já recebidas) para {phone}")
-                    else:
-                        estado["status"] = "aguardando_pedido"
-                        print(f"[Ana] Reinício com foto: sem pedido anterior para {phone}")
+                ultimo = historico.get("ultimo_pedido", "")
+                if ultimo:
+                    # Restaura pedido silenciosamente (reinício do servidor)
+                    dados_ped = buscar_pedido_na_planilha(ultimo)
+                    if dados_ped:
+                        estado["produto"] = dados_ped.get("produto", "")
+                        estado["sku"] = dados_ped.get("sku", "")
+                        estado["limite_fotos"] = extrair_limite_fotos(dados_ped.get("sku", ""))
+                    fotos_ja = contar_imagens_pedido(ultimo)
+                    estado["fotos_recebidas"] = fotos_ja
+                    estado["pedido"] = ultimo
+                    estado["status"] = "aguardando_fotos"
+                    print(f"[Ana] Reinício: restaurando pedido {ultimo} ({fotos_ja} fotos) para {phone}")
                 else:
-                    # Mensagem de texto: saudação de retorno normal
+                    # Cliente com pedidos anteriores mas sem pedido ativo — saudação de retorno
                     nome_part = f", {nome}" if nome else ""
                     saudacao = MSG_SAUDACAO_RETORNO.format(nome_part=nome_part)
                     enviar_mensagem(phone, saudacao)
                     estado["status"] = "aguardando_pedido"
-                    print(f"[Ana] Cliente recorrente: {phone} nome={nome}")
+                    print(f"[Ana] Cliente recorrente sem pedido ativo: {phone}")
 
             elif historico:
                 # Ja foi saudado antes (reinicio do servidor) — nao repete saudacao
