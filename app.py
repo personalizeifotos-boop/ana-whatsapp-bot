@@ -680,8 +680,12 @@ def iniciar_timer(phone, segundos, callback):
 def pedir_numero_pedido_timer(phone):
     estado = get_estado(phone)
     if not estado["pedido"]:
-        enviar_mensagem(phone, "Por favor, preciso do número do pedido.")
-        print(f"[Ana] Timer 10s: pediu número do pedido para {phone}")
+        enviar_mensagem(
+            phone,
+            "Por favor, precisamos do n\u00famero do pedido, "
+            "sem ele, n\u00e3o conseguimos identificar a sua compra."
+        )
+        print(f"[Ana] Timer 30s: pediu n\u00famero do pedido para {phone}")
 
 def verificar_inatividade_fotos(phone):
     estado = get_estado(phone)
@@ -959,13 +963,14 @@ def processar_imagem_recebida(phone, image_url):
     else:
         estado["imgs_antes_pedido"] += 1
         estado["status"] = "aguardando_pedido"
-        iniciar_timer(phone, 10, lambda: pedir_numero_pedido_timer(phone))
+        iniciar_timer(phone, 30, lambda: pedir_numero_pedido_timer(phone))
         print(f"[Ana] {phone}: imagem sem pedido ({estado['imgs_antes_pedido']}ª)")
 
 def processar_texto_recebido(phone, body):
     estado = get_estado(phone)
     status = estado["status"]
     body_low = body.lower().strip()
+
 
     # ── Tenta extrair nome do cliente se ainda não temos ─────────
     if not estado.get("nome_cliente"):
