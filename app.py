@@ -97,6 +97,13 @@ PEDIDO_REGEX = re.compile(r'\b([A-Z0-9]{10,20})\b')
 # Cada entrada: (lista de palavras-chave, resposta)
 FAQ_RESPOSTAS = [
     (
+        ["como envio", "como mando", "como faço para enviar", "como enviar", "como mandar",
+         "enviar fotos", "mandar fotos", "onde envio", "onde mando"],
+        "É simples! É só enviar as fotos diretamente aqui pelo WhatsApp mesmo. 😊\n"
+        "Mas antes de enviar as fotos, não esqueça de nos passar o número do pedido — "
+        "ele está logo após 'ID:' no seu comprovante de compra da Shopee."
+    ),
+    (
         ["cancelar", "cancelamento", "desistir", "devolver", "estornar"],
         "Você pode cancelar diretamente pela Shopee, sem problemas! 😊 "
         "Mas se quiser, pode comprar mais fotos diretamente conosco e aproveitamos o pedido atual para enviar junto — "
