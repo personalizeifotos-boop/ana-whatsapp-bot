@@ -1120,11 +1120,26 @@ def verificar_gmail():
                     if m_qtd:
                         quantidade = m_qtd.group(1).strip()
 
-                    m_sku = re.search(r'Varia[ção]{2,4}[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
+                    # 1) Extrai variação/SKU do email
+                    m_sku = re.search(r'Varia[ção]{2,4}[:\s]+([^\n\t<]{3,80})', corpo, re.IGNORECASE)
                     if not m_sku:
                         m_sku = re.search(r'SKU[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
                     if m_sku:
-                        sku = re.sub(r'^\d+[-\s]+', '', m_sku.group(1).strip())
+                        sku_raw = re.sub(r'^\d+[-\s]+', '', m_sku.group(1).strip())
+                        # Mantém apenas até o primeiro '[' ou '(' ou SKU code (evita lixo)
+                        sku_raw = re.split(r'[\[\(]', sku_raw)[0].strip()
+                        sku = sku_raw
+
+                    # 2) Se SKU tem só quantidade sem dimensão, tenta extrair dimensão do produto
+                    if sku and not any(k in sku.upper() for k in
+                                       ["10X15","15X21","IMA","IMÃ","POLAROID","MINI","A4"]):
+                        tipo_prod = identificar_tipo(produto, "")
+                        if tipo_prod != "10X15" or "10X15" in produto.upper() or "10 X 15" in produto.upper():
+                            m_qtd_sku = re.search(r'(\d+)', sku)
+                            if m_qtd_sku:
+                                sku = f"{m_qtd_sku.group(1)} fotos {tipo_prod}"
+
+                    # 3) Fallback: tenta extrair do produto
                     if not sku:
                         m_kit = re.search(r'(KIT\s+(?:AT[EÉ]\s+)?\d+\s+FOTOS?)', corpo, re.IGNORECASE)
                         if m_kit:
@@ -1132,10 +1147,11 @@ def verificar_gmail():
                             m_num = re.search(r'(\d+)\s*FOTO', sku.upper())
                             if m_num:
                                 sku = m_num.group(1) + ' fotos'
-                    if '+' not in sku:
-                        sku_multi = extrair_sku_multiproduto(produto, corpo)
-                        if sku_multi:
-                            sku = sku_multi
+
+                    # 4) Multi-produto: só via '+' já presente no SKU extraído
+                    #    NÃO varre corpo do email (contém anúncios de outros produtos)
+                    if '+' in sku:
+                        pass  # parse_sku_produtos cuidará disso em vincular_pedido
 
                     mc = re.search(r'Envie o pedido para ([^\.\n,]+)', corpo)
                     if mc:
