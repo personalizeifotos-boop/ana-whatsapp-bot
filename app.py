@@ -19,7 +19,7 @@ app = Flask(__name__)
 
 # ── Controle da Ana ───────────────────────────────────────────
 # Defina como True para reativar o envio de mensagens da Ana
-ANA_ATIVA = False
+ANA_ATIVA = True
 
 # ── Configurações ────────────────────────────────────────────
 GMAIL_USER = os.environ.get("GMAIL_USER")
