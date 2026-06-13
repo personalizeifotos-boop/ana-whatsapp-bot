@@ -1188,4 +1188,13 @@ def whatsapp():
         traceback.print_exc()
         return "ok", 200
 
-@app.route("/", met
+@app.route("/", methods=["GET"])
+def health():
+    return "Ana Bot OK", 200
+
+_imap_thread = threading.Thread(target=thread_gmail, daemon=True)
+_imap_thread.start()
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
