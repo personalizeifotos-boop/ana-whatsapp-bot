@@ -1157,37 +1157,45 @@ def whatsapp():
 
         print(f"[Webhook] phone={phone} tipo={msg_type} imagem={tem_imagem} doc_img={tem_documento_imagem} body={str(body)[:60]}")
 
-        # ── Saudação automática (primeiro contato) ────────────────
+     # ── Saudação automática (primeiro contato) ────────────────────────────
         estado = get_estado(phone)
         if estado["status"] == "novo":
-            # Verifica se é cliente que já comprou antes (memória)
             historico = carregar_cliente(phone)
+
             if historico and historico["total_pedidos"] > 0:
+                # Cliente recorrente com pedidos
                 nome = historico["nome"]
                 nome_part = f", {nome}" if nome else ""
                 saudacao = MSG_SAUDACAO_RETORNO.format(nome_part=nome_part)
                 enviar_mensagem(phone, saudacao)
                 estado["nome_cliente"] = nome
-                print(f"[Ana] Cliente recorrente: {phone} nome={nome} pedidos={historico['total_pedidos']}")
+                estado["status"] = "aguardando_pedido"
+                print(f"[Ana] Cliente recorrente: {phone} nome={nome}")
+
+            elif historico:
+                # Ja foi saudado antes (reinicio do servidor) — nao repete saudacao
+                estado["status"] = "aguardando_pedido"
+                if historico.get("nome"):
+                    estado["nome_cliente"] = historico["nome"]
+                print(f"[Ana] Cliente ja saudado: {phone} — sem saudacao")
+
             else:
-                # Primeiro contato — cria registro na aba Clientes
+                # Primeiro contato de verdade
                 threading.Thread(
                     target=salvar_ou_atualizar_cliente,
                     args=(phone,),
                     daemon=True
                 ).start()
-                # Verifica se a primeira mensagem já é uma pergunta FAQ
                 body_faq = body if (body and not body.startswith("http")) else ""
                 faq_inicial = verificar_faq(body_faq.lower().strip()) if body_faq else None
                 if faq_inicial:
-                    # Integra saudação + resposta FAQ em uma só mensagem
-                    msg_boas_vindas = ("Ola, seja bem-vindo a Personalizei! Obrigado pela sua compra. \n\n" + faq_inicial)
-                    enviar_mensagem(phone, msg_boas_vindas)
+                    msg_combinada = ("Olá, seja bem-vindo à Personalizei! Obrigado pela sua compra. 😊" "\n\n" + faq_inicial)
+                    enviar_mensagem(phone, msg_combinada)
                     estado["status"] = "aguardando_pedido"
                     return "ok", 200
                 else:
                     enviar_mensagem(phone, MSG_SAUDACAO)
-            estado["status"] = "aguardando_pedido"
+                estado["status"] = "aguardando_pedido"
 
         # ── Processa imagem ───────────────────────────────────────
         if tem_imagem and image_url:
