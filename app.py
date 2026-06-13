@@ -126,7 +126,8 @@ FAQ_RESPOSTAS = [
         "https://shopee.com.br/personalizei_fotografias 😊"
     ),
     (
-        ["quanto custa", "preço", "preco", "valor", "tabela", "quanto é", "quanto e"],
+        ["quanto custa", "preço", "preco", "valor", "tabela", "quanto é", "quanto e",
+         "custa", "imã", "ima", "iman", "custo", "cobrado", "cobra", "pago", "paga"],
         "Nossos preços por foto são:\n"
         "• 10x15 cm — R$ 1,00\n"
         "• Mini foto — R$ 1,00\n"
@@ -1187,8 +1188,4 @@ def whatsapp():
         traceback.print_exc()
         return "ok", 200
 
-@app.route("/", methods=["GET"])
-def health():
-    return "Ana Bot OK", 200
-
-_imap_thread = threading.Thr
+@app.route("/", met
