@@ -126,11 +126,15 @@ FAQ_RESPOSTAS = [
         "https://shopee.com.br/personalizei_fotografias 😊"
     ),
     (
-        ["pix", "pagamento", "pagar", "valor", "preco", "preço", "quanto custa"],
-        "Segue a chave PIX para pagamento de fotos extras:\n"
-        "Titular: Rodrigo Vieira Monteiro\n"
-        "Chave PIX: 58733941000114\n"
-        "Após o pagamento, envie o comprovante por favor. 😊"
+        ["quanto custa", "preço", "preco", "valor", "tabela", "quanto é", "quanto e"],
+        "Nossos preços por foto são:\n"
+        "• 10x15 cm — R$ 1,00\n"
+        "• Mini foto — R$ 1,00\n"
+        "• Polaroide — R$ 1,00\n"
+        "• 15x21 cm — R$ 1,50\n"
+        "• Imã / Mini imã — R$ 2,50\n"
+        "• A4 — R$ 3,00\n\n"
+        "Esses valores são cobrados apenas para fotos enviadas além da quantidade do seu pedido. 😊"
     ),
 ]
 
@@ -1187,9 +1191,4 @@ def whatsapp():
 def health():
     return "Ana Bot OK", 200
 
-_imap_thread = threading.Thread(target=thread_gmail, daemon=True)
-_imap_thread.start()
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+_imap_thread = threading.Thr
