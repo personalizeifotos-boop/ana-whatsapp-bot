@@ -146,6 +146,79 @@ FAQ_RESPOSTAS = [
     ),
 ]
 
+
+def calcular_preco(texto):
+    """
+    Detecta frases como 'quanto daria 37 fotos imã' e retorna
+    a resposta com o total calculado. Retorna None se não detectar.
+    """
+    t = texto.lower().strip()
+
+    # Padrões: "quanto daria/fica/sai/custa X fotos [tipo]"
+    m = re.search(
+        r'(?:quanto (?:daria|fica|sai|custa|seria|custaria)|valor de|preco de|preço de)'
+        r'\s+(\d+)\s+(?:fotos?|imãs?|imas?)?\s*(.*)',
+        t
+    )
+    if not m:
+        # Tenta "X fotos [tipo] quanto custa"
+        m2 = re.search(r'(\d+)\s+(?:fotos?\s+)?(\w[\w\s]*)(?:quanto|valor|preco|preço)', t)
+        if m2:
+            quantidade = int(m2.group(1))
+            tipo_raw = m2.group(2).strip()
+        else:
+            return None
+    else:
+        quantidade = int(m.group(1))
+        tipo_raw = (m.group(2) or "").strip()
+
+    # Remove palavras desnecessárias do tipo
+    for stop in ["de", "foto", "fotos", "imagem", "imagens"]:
+        tipo_raw = re.sub(r'\b' + stop + r'\b', '', tipo_raw).strip()
+
+    tipo_raw_upper = tipo_raw.upper()
+
+    # Mapear para preço
+    preco_unitario = None
+    nome_tipo = None
+
+    if any(k in tipo_raw_upper for k in ["MINI IMA", "MINI IMÃ", "MINIIMA", "MINIIMÃ"]):
+        preco_unitario = 2.50
+        nome_tipo = "Mini imã"
+    elif any(k in tipo_raw_upper for k in ["IMA", "IMÃ", "IMAN", "IMÁN", "IMAG"]) and "IMAGEM" not in tipo_raw_upper:
+        preco_unitario = 2.50
+        nome_tipo = "Imã"
+    elif any(k in tipo_raw_upper for k in ["MINI FOTO", "MINIFOTO"]):
+        preco_unitario = 1.00
+        nome_tipo = "Mini foto"
+    elif "POLAROIDE" in tipo_raw_upper or "POLAROID" in tipo_raw_upper:
+        preco_unitario = 1.00
+        nome_tipo = "Polaroide"
+    elif "15X21" in tipo_raw_upper or "15 X 21" in tipo_raw_upper or "15X 21" in tipo_raw_upper:
+        preco_unitario = 1.50
+        nome_tipo = "15x21 cm"
+    elif "10X15" in tipo_raw_upper or "10 X 15" in tipo_raw_upper or "10X 15" in tipo_raw_upper:
+        preco_unitario = 1.00
+        nome_tipo = "10x15 cm"
+    elif tipo_raw_upper.strip() == "A4" or tipo_raw_upper.startswith("A4"):
+        preco_unitario = 3.00
+        nome_tipo = "A4"
+    elif not tipo_raw_upper:
+        # Sem tipo especificado — retornar tabela
+        return None
+
+    if preco_unitario is None:
+        return None
+
+    total = quantidade * preco_unitario
+    total_str = f"R$ {total:.2f}".replace(".", ",")
+    unitario_str = f"R$ {preco_unitario:.2f}".replace(".", ",")
+
+    return (
+        f"{quantidade} fotos {nome_tipo} ficam {total_str}. \U0001f60a\n"
+        f"(cada {nome_tipo} custa {unitario_str} — cobrado apenas para fotos além da quantidade do pedido)"
+    )
+
 def verificar_faq(texto_lower):
     """Verifica se o texto corresponde a alguma pergunta do FAQ. Retorna resposta ou None."""
     for palavras, resposta in FAQ_RESPOSTAS:
@@ -934,6 +1007,13 @@ def processar_texto_recebido(phone, body):
         cancelar_timer(phone)
         vincular_pedido(phone, numero)
         print(f"[Webhook] Pedido {numero} vinculado ao telefone {phone}")
+        return
+
+    # ── Cálculo de preço: ex. "quanto daria 37 fotos imã" ────────
+    resposta_calc = calcular_preco(body_low)
+    if resposta_calc:
+        enviar_mensagem(phone, resposta_calc)
+        print(f"[Ana] Cálculo respondido para {phone}: {body[:60]}")
         return
 
     # ── FAQ: responde perguntas frequentes ────────────────────────
