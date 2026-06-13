@@ -691,8 +691,12 @@ def verificar_inatividade_fotos(phone):
     recebidas = estado["fotos_recebidas"]
     if limite > 0 and recebidas < limite:
         faltam = limite - recebidas
-        enviar_mensagem(phone, f"Ficou faltando {faltam} imagem(ns).")
-        print(f"[Ana] Timer 10min: faltando {faltam} fotos para {phone}")
+        enviar_mensagem(
+            phone,
+            f"Recebemos {recebidas} foto(s), mas seu pedido é de {limite}. \U0001f60a\n"
+            f"Faltam {faltam} foto(s) para completar seu pedido!"
+        )
+        print(f"[Ana] Timer 10s: faltando {faltam} fotos para {phone}")
 
 def _pedir_dimensao_timer(phone):
     estado = get_estado(phone)
@@ -755,6 +759,56 @@ def _processar_imagem_multiproduto(phone):
     else:
         iniciar_timer(phone, 600, lambda: _verificar_inatividade_multiproduto(phone))
 
+def reavaliar_apos_delecao(phone):
+    """Reavalia contagem 10s após cliente deletar uma foto."""
+    estado = get_estado(phone)
+    if estado["status"] != "aguardando_fotos":
+        return
+    limite = estado["limite_fotos"]
+    recebidas = estado["fotos_recebidas"]
+    tipo = identificar_tipo(estado.get("produto", ""), estado.get("sku", ""))
+
+    if limite > 0 and recebidas == limite:
+        # Bateu exatamente — concluir
+        enviar_mensagem(phone, f"Perfeito, {limite} fotos {tipo}! \U0001f60a")
+        enviar_mensagem(phone, MSG_FINALIZAR)
+        estado["status"] = "concluido"
+        cancelar_timer(phone)
+        print(f"[Ana] Deleção → pedido concluído exato: {phone}")
+
+    elif limite > 0 and recebidas > limite:
+        # Ainda tem extras
+        extras = recebidas - limite
+        preco = PRECOS_EXTRA.get(tipo, 1.00)
+        valor = round(extras * preco, 2)
+        estado["fotos_extras"] = extras
+        estado["valor_extra"] = valor
+        valor_str = f"R$ {valor:.2f}".replace(".", ",")
+        unitario_str = f"R$ {preco:.2f}".replace(".", ",")
+        enviar_mensagem(
+            phone,
+            f"Recebemos {recebidas} fotos, mas seu pedido é de {limite}. \U0001f60a\n"
+            f"Ficaram {extras} foto(s) a mais, que custam {valor_str} no total "
+            f"({unitario_str} cada).\n\nDeseja comprar as {extras} foto(s) extras?"
+        )
+        estado["status"] = "aguardando_resposta_extras"
+        cancelar_timer(phone)
+
+    elif limite > 0 and recebidas < limite:
+        # Ainda faltam fotos
+        faltam = limite - recebidas
+        enviar_mensagem(
+            phone,
+            f"Recebemos {recebidas} foto(s), mas seu pedido é de {limite}. \U0001f60a\n"
+            f"Faltam {faltam} foto(s) para completar seu pedido!"
+        )
+
+def avaliar_conclusao_timer(phone):
+    """Chamado 10s após última foto — confirma se ainda está em aguardando_fotos e conclui."""
+    estado = get_estado(phone)
+    if estado["status"] == "aguardando_fotos":
+        avaliar_conclusao(phone)
+
 def avaliar_conclusao(phone):
     estado = get_estado(phone)
     limite = estado["limite_fotos"]
@@ -787,10 +841,14 @@ def avaliar_conclusao(phone):
         preco = PRECOS_EXTRA.get(tipo, 1.00)
         valor = round(extras * preco, 2)
         estado["valor_extra"] = valor
+        valor_str = f"R$ {valor:.2f}".replace(".", ",")
+        unitario_str = f"R$ {preco:.2f}".replace(".", ",")
         enviar_mensagem(
             phone,
-            f"Você enviou {extras} imagem(ns) a mais. "
-            "Você vai querer comprar as imagens a mais?"
+            f"Recebemos {recebidas} fotos, mas seu pedido é de {limite}. \U0001f60a\n"
+            f"Ficaram {extras} foto(s) a mais, que custam {valor_str} no total "
+            f"({unitario_str} cada).\n\n"
+            f"Deseja comprar as {extras} foto(s) extras?"
         )
         estado["status"] = "aguardando_resposta_extras"
         cancelar_timer(phone)
@@ -894,10 +952,10 @@ def processar_imagem_recebida(phone, image_url):
         print(f"[Ana] {phone}: {fotos}/{limite} fotos")
 
         if limite > 0 and fotos >= limite:
-            cancelar_timer(phone)
-            avaliar_conclusao(phone)
+            # Aguarda 10s após última foto antes de concluir/cobrar extras
+            iniciar_timer(phone, 10, lambda: avaliar_conclusao_timer(phone))
         else:
-            iniciar_timer(phone, 600, lambda: verificar_inatividade_fotos(phone))
+            iniciar_timer(phone, 10, lambda: verificar_inatividade_fotos(phone))
     else:
         estado["imgs_antes_pedido"] += 1
         estado["status"] = "aguardando_pedido"
@@ -1223,6 +1281,20 @@ def whatsapp():
 
         body = extrair_texto(data)
 
+        # ── Detecta mensagem deletada/revogada pelo cliente ───────
+        is_deleted = (
+            data.get("isRevoked") is True
+            or data.get("deleted") is True
+            or str(msg_type).lower() in ("revoked", "deleted", "messagerevoked", "delete")
+        )
+        if is_deleted:
+            estado = get_estado(phone)
+            if estado["status"] == "aguardando_fotos" and estado["fotos_recebidas"] > 0:
+                estado["fotos_recebidas"] = max(0, estado["fotos_recebidas"] - 1)
+                print(f"[Ana] Foto deletada por {phone}: agora {estado['fotos_recebidas']}/{estado['limite_fotos']}")
+                iniciar_timer(phone, 10, lambda: reavaliar_apos_delecao(phone))
+            return "ok", 200
+
         # ── Detecta imagem enviada como documento ─────────────────
         tem_documento_imagem = False
         if msg_type in ("document", "documentMessage"):
@@ -1261,12 +1333,36 @@ def whatsapp():
             if historico and historico["total_pedidos"] > 0:
                 # Cliente recorrente com pedidos
                 nome = historico["nome"]
-                nome_part = f", {nome}" if nome else ""
-                saudacao = MSG_SAUDACAO_RETORNO.format(nome_part=nome_part)
-                enviar_mensagem(phone, saudacao)
-                estado["nome_cliente"] = nome
-                estado["status"] = "aguardando_pedido"
-                print(f"[Ana] Cliente recorrente: {phone} nome={nome}")
+                if nome:
+                    estado["nome_cliente"] = nome
+
+                if tem_imagem:
+                    # Fotos chegaram após reinício do servidor
+                    # Restaura último pedido silenciosamente sem mandar saudação
+                    ultimo = historico.get("ultimo_pedido", "")
+                    if ultimo:
+                        estado["pedido"] = ultimo
+                        # Restaura produto/sku/limite da planilha
+                        dados_ped = buscar_pedido_na_planilha(ultimo)
+                        if dados_ped:
+                            estado["produto"] = dados_ped.get("produto", "")
+                            estado["sku"] = dados_ped.get("sku", "")
+                            estado["limite_fotos"] = extrair_limite_fotos(dados_ped.get("sku", ""))
+                        # Restaura contagem de fotos já recebidas
+                        fotos_ja = contar_imagens_pedido(ultimo)
+                        estado["fotos_recebidas"] = fotos_ja
+                        estado["status"] = "aguardando_fotos"
+                        print(f"[Ana] Reinício com foto: restaurando pedido {ultimo} ({fotos_ja} fotos já recebidas) para {phone}")
+                    else:
+                        estado["status"] = "aguardando_pedido"
+                        print(f"[Ana] Reinício com foto: sem pedido anterior para {phone}")
+                else:
+                    # Mensagem de texto: saudação de retorno normal
+                    nome_part = f", {nome}" if nome else ""
+                    saudacao = MSG_SAUDACAO_RETORNO.format(nome_part=nome_part)
+                    enviar_mensagem(phone, saudacao)
+                    estado["status"] = "aguardando_pedido"
+                    print(f"[Ana] Cliente recorrente: {phone} nome={nome}")
 
             elif historico:
                 # Ja foi saudado antes (reinicio do servidor) — nao repete saudacao
