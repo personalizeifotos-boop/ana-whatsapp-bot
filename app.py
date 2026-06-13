@@ -1176,7 +1176,17 @@ def whatsapp():
                     args=(phone,),
                     daemon=True
                 ).start()
-                enviar_mensagem(phone, MSG_SAUDACAO)
+                # Verifica se a primeira mensagem já é uma pergunta FAQ
+                body_faq = body if (body and not body.startswith("http")) else ""
+                faq_inicial = verificar_faq(body_faq.lower().strip()) if body_faq else None
+                if faq_inicial:
+                    # Integra saudação + resposta FAQ em uma só mensagem
+                    msg_boas_vindas = ("Ola, seja bem-vindo a Personalizei! Obrigado pela sua compra. \n\n" + faq_inicial)
+                    enviar_mensagem(phone, msg_boas_vindas)
+                    estado["status"] = "aguardando_pedido"
+                    return "ok", 200
+                else:
+                    enviar_mensagem(phone, MSG_SAUDACAO)
             estado["status"] = "aguardando_pedido"
 
         # ── Processa imagem ───────────────────────────────────────
