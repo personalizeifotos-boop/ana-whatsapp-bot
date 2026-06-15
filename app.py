@@ -61,34 +61,67 @@ MSG_PIX = (
     "Após efetuar o pagamento pela chave PIX nos envie o comprovante por favor."
 )
 
+# ── Pasta raiz no Google Drive ───────────────────────────────
+PEDIDOS_SHOPEE_FOLDER_ID = "1ikovzBRkVLdR8kqTpnSlpy9WyC-dN1IO"
+
 # ── Tabela de preços por foto extra ─────────────────────────
 PRECOS_EXTRA = {
     "10X15": 1.00,
     "15X21": 1.50,
-    "Mini foto": 1.00,
+    "Mini Fotos": 1.00,
     "A4": 3.00,
-    "Ima": 2.50,
-    "Mini ima": 2.50,
-    "Imã": 2.50,
-    "Polaroide": 1.00,
+    "Fotos Retro com ima": 2.50,
+    "Mini Fotos com ima": 2.50,
+    "Fotos Retro": 1.00,
+    "Mini Fotos Retro": 1.00,
+    "Mini Fotos Retro com ima": 2.50,
     "Tirinha": 1.00,
     "Cartao de Visita": 1.00,
+    "Etiqueta": 1.00,
 }
 
+# Nome de exibição (com acentos) para cada tipo — usado no Drive e nas mensagens
+NOME_PASTA_TIPO = {
+    "10X15":                    "10X15",
+    "15X21":                    "15X21",
+    "A4":                       "A4",
+    "Cartao de Visita":         "Cartao de Visita",
+    "Etiqueta":                 "Etiqueta",
+    "Fotos Retro":              "Fotos Retrô",
+    "Fotos Retro com ima":      "Fotos Retrô com imã",
+    "Mini Fotos":               "Mini Fotos",
+    "Mini Fotos com ima":       "Mini Fotos com imã",
+    "Mini Fotos Retro":         "Mini Fotos Retrô",
+    "Mini Fotos Retro com ima": "Mini Fotos Retrô com imã",
+    "Tirinha":                  "Tirinha",
+}
+
+# Mapeamento: palavra-chave (maiúsculo, sem acento) → chave interna do tipo
+# Ordem importa: mais específico primeiro
 MAPEAMENTO_TIPO = [
-    ("MINI IMA", "Mini ima"),
-    ("MINI FOTO", "Mini foto"),
-    ("CARTAO DE VISITA", "Cartao de Visita"),
-    ("TIRINHA", "Tirinha"),
-    ("POLAROIDE", "Polaroide"),
-    ("ETIQUETA", "Etiqueta"),
-    ("15X21", "15X21"),
-    ("15 X 21", "15X21"),
-    ("10X15", "10X15"),
-    ("10 X 15", "10X15"),
-    ("IMA", "Ima"),
-    ("A4", "A4"),
-    ("TAG", "Tag"),
+    ("MINI RETRO COM IMA",  "Mini Fotos Retro com ima"),
+    ("MINI RETRO COM IMA",  "Mini Fotos Retro com ima"),
+    ("MINI RETRO IMA",      "Mini Fotos Retro com ima"),
+    ("MINI IMA RETRO",      "Mini Fotos Retro com ima"),
+    ("MINI RETRO",          "Mini Fotos Retro"),
+    ("MINI IMA",            "Mini Fotos com ima"),
+    ("MINI FOTO",           "Mini Fotos"),
+    ("MINI FOTOS",          "Mini Fotos"),
+    ("CARTAO DE VISITA",    "Cartao de Visita"),
+    ("TIRINHA",             "Tirinha"),
+    ("POLAROIDE",           "Fotos Retro"),
+    ("RETRO COM IMA",       "Fotos Retro com ima"),
+    ("RETRO IMA",           "Fotos Retro com ima"),
+    ("IMA RETRO",           "Fotos Retro com ima"),
+    ("RETRO",               "Fotos Retro"),
+    ("ETIQUETA",            "Etiqueta"),
+    ("15X21",               "15X21"),
+    ("15 X 21",             "15X21"),
+    ("10X15",               "10X15"),
+    ("10 X 15",             "10X15"),
+    ("IMA",                 "Fotos Retro com ima"),
+    ("A4",                  "A4"),
+    ("TAG",                 "Cartao de Visita"),
 ]
 
 PEDIDO_REGEX = re.compile(r'\b([A-Z0-9]{10,20})\b')
@@ -367,7 +400,47 @@ def enviar_mensagem(phone, mensagem):
         return False
 
 # ── Google Drive ──────────────────────────────────────────────
-def _upload_imagem_drive(image_url, phone):
+_drive_folder_cache = {}  # (nome, parent_id) → folder_id
+
+def _drive_service():
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    if not creds_json:
+        return None
+    from google.oauth2.service_account import Credentials as _Creds
+    creds = _Creds.from_service_account_info(
+        json.loads(creds_json),
+        scopes=["https://www.googleapis.com/auth/drive"]
+    )
+    return build("drive", "v3", credentials=creds)
+
+def get_or_create_drive_folder(service, nome, parent_id):
+    """Retorna o ID de uma pasta, criando se não existir. Usa cache."""
+    cache_key = (nome, parent_id)
+    if cache_key in _drive_folder_cache:
+        return _drive_folder_cache[cache_key]
+    try:
+        q = (f"name='{nome}' and mimeType='application/vnd.google-apps.folder' "
+             f"and '{parent_id}' in parents and trashed=false")
+        res = service.files().list(q=q, fields="files(id,name)").execute()
+        files = res.get("files", [])
+        if files:
+            folder_id = files[0]["id"]
+        else:
+            meta = {
+                "name": nome,
+                "mimeType": "application/vnd.google-apps.folder",
+                "parents": [parent_id],
+            }
+            folder = service.files().create(body=meta, fields="id").execute()
+            folder_id = folder["id"]
+            print(f"[Drive] Pasta criada: {nome} ({folder_id})")
+        _drive_folder_cache[cache_key] = folder_id
+        return folder_id
+    except Exception as e:
+        print(f"[Drive] Erro ao criar/buscar pasta '{nome}': {e}")
+        return parent_id  # fallback: salva na pasta pai
+
+def _upload_imagem_drive(image_url, phone, pedido="", tipo=""):
     try:
         req = _url_req.Request(image_url, headers={"User-Agent": "Mozilla/5.0"})
         with _url_req.urlopen(req, timeout=15) as resp:
@@ -375,27 +448,35 @@ def _upload_imagem_drive(image_url, phone):
         if len(image_bytes) < 500:
             print(f"[Drive] Imagem muito pequena ({len(image_bytes)}B) — URL expirada?")
             return image_url
-        creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-        if not creds_json:
+
+        service = _drive_service()
+        if not service:
             return image_url
-        creds = Credentials.from_service_account_info(
-            json.loads(creds_json),
-            scopes=["https://www.googleapis.com/auth/drive.file"]
+
+        # ── Hierarquia: PEDIDOS_SHOPEE / tipo / pedido ────────────────
+        nome_pasta_tipo = NOME_PASTA_TIPO.get(tipo, tipo or "Sem Categoria")
+        folder_tipo = get_or_create_drive_folder(
+            service, nome_pasta_tipo, PEDIDOS_SHOPEE_FOLDER_ID
         )
-        service = build("drive", "v3", credentials=creds)
+        if pedido:
+            folder_pedido = get_or_create_drive_folder(service, pedido, folder_tipo)
+        else:
+            folder_pedido = folder_tipo
+
         timestamp = datetime.now(BRASILIA).strftime("%Y%m%d_%H%M%S")
         phone_clean = re.sub(r'\D', '', phone)
         filename = f"foto_{phone_clean}_{timestamp}.jpg"
         media = MediaInMemoryUpload(image_bytes, mimetype="image/jpeg")
         file_obj = service.files().create(
-            body={"name": filename}, media_body=media, fields="id"
+            body={"name": filename, "parents": [folder_pedido]},
+            media_body=media, fields="id"
         ).execute()
         file_id = file_obj.get("id")
         service.permissions().create(
             fileId=file_id, body={"type": "anyone", "role": "reader"}
         ).execute()
         drive_url = f"https://drive.google.com/uc?id={file_id}&export=download"
-        print(f"[Drive] ✓ {filename} ({len(image_bytes)//1024}KB)")
+        print(f"[Drive] ✓ {filename} → {nome_pasta_tipo}/{pedido or '-'} ({len(image_bytes)//1024}KB)")
         return drive_url
     except Exception as e:
         print(f"[Drive] Erro: {e}")
@@ -932,7 +1013,6 @@ def processar_imagem_recebida(phone, image_url):
         print(f"[Ana] Pedido concluído — imagem de {phone} ignorada")
         return
 
-    drive_url = _upload_imagem_drive(image_url, phone)
     pedido = estado.get("pedido", "")
 
     tipo_img = ""
@@ -943,6 +1023,7 @@ def processar_imagem_recebida(phone, image_url):
     elif pedido:
         tipo_img = identificar_tipo(estado.get("produto", ""), estado.get("sku", ""))
 
+    drive_url = _upload_imagem_drive(image_url, phone, pedido=pedido, tipo=tipo_img)
     salvar_imagem_pendente(phone, drive_url, pedido, tipo_img)
 
     if pedido:
