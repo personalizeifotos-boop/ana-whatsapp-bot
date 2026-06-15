@@ -17,6 +17,15 @@ from googleapiclient.http import MediaInMemoryUpload
 BRASILIA = pytz.timezone("America/Sao_Paulo")
 app = Flask(__name__)
 
+# ── Exibe email da conta de serviço no log de inicialização ──────────────────
+try:
+    _creds_raw = os.environ.get("GOOGLE_CREDENTIALS_JSON", "")
+    if _creds_raw:
+        _creds_data = json.loads(_creds_raw)
+        print(f"[Setup] Conta de serviço Google: {_creds_data.get('client_email', 'não encontrado')}")
+except Exception as _e:
+    print(f"[Setup] Erro ao ler credenciais: {_e}")
+
 # ── Controle da Ana ───────────────────────────────────────────
 # Defina como True para reativar o envio de mensagens da Ana
 ANA_ATIVA = True
