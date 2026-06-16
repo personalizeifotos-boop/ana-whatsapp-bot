@@ -412,12 +412,19 @@ def enviar_mensagem(phone, mensagem):
 _drive_folder_cache = {}  # (nome, parent_id) → folder_id
 
 def _drive_service():
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-    if not creds_json:
+    client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+    client_secret = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+    refresh_token = os.environ.get("GOOGLE_OAUTH_REFRESH_TOKEN")
+    if not (client_id and client_secret and refresh_token):
+        print("[Drive] Credenciais OAuth2 não configuradas.")
         return None
-    from google.oauth2.service_account import Credentials as _Creds
-    creds = _Creds.from_service_account_info(
-        json.loads(creds_json),
+    from google.oauth2.credentials import Credentials as _OAuthCreds
+    creds = _OAuthCreds(
+        token=None,
+        refresh_token=refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=client_id,
+        client_secret=client_secret,
         scopes=["https://www.googleapis.com/auth/drive"]
     )
     return build("drive", "v3", credentials=creds)
