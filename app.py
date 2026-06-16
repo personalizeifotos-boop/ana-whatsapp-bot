@@ -975,6 +975,31 @@ def avaliar_conclusao(phone):
     elif recebidas < limite:
         pass  # timer de inatividade já rodando
 
+def _vincular_background(phone, numero_pedido, estado, is_multi):
+    """Operações pesadas de Sheets em background após vincular pedido."""
+    try:
+        atualizar_telefone_na_planilha(numero_pedido, phone)
+        nome_cliente = estado.get("nome_cliente", "")
+        salvar_ou_atualizar_cliente(phone, nome=nome_cliente, pedido=numero_pedido)
+        fotos_existentes = contar_imagens_pedido(numero_pedido)
+        qtd_retro = preencher_pedido_retroativo(phone, numero_pedido)
+        imgs_antes = estado.get("imgs_antes_pedido", 0)
+        if qtd_retro > 0 and imgs_antes > 0:
+            qtd_retro = min(qtd_retro, imgs_antes)
+            print(f"[Ana] {qtd_retro} fotos retroativas para {phone}")
+        total = fotos_existentes + qtd_retro
+        estado["fotos_recebidas"] = total
+        estado["imgs_antes_pedido"] = 0
+        if total > 0:
+            print(f"[Ana] {phone}: {total} fotos iniciais pedido {numero_pedido} (sheet={fotos_existentes}, retro={qtd_retro})")
+        if not is_multi and estado["limite_fotos"] > 0:
+            if total >= estado["limite_fotos"]:
+                avaliar_conclusao(phone)
+            elif total > 0:
+                iniciar_timer(phone, 600, lambda: verificar_inatividade_fotos(phone))
+    except Exception as e:
+        print(f"[Ana] Erro _vincular_background {phone}: {e}")
+
 def vincular_pedido(phone, numero_pedido):
     dados = buscar_pedido_na_planilha(numero_pedido)
     if not dados:
@@ -987,31 +1012,25 @@ def vincular_pedido(phone, numero_pedido):
     tipo = identificar_tipo(produto, sku)
     limite = extrair_limite_fotos(sku)
 
+    # ── Reset COMPLETO dos contadores ao trocar de pedido ──────────────────
     estado["pedido"] = numero_pedido
     estado["produto"] = produto
     estado["sku"] = sku
     estado["limite_fotos"] = limite
     estado["status"] = "aguardando_fotos"
+    estado["fotos_recebidas"] = 0      # sempre zera ao vincular novo pedido
+    estado["fotos_extras"] = 0
+    estado["valor_extra"] = 0.0
+    estado["multi_produto"] = False
+    estado["produtos"] = []
+    estado["produto_ativo_idx"] = -1
 
     telefone_pedido[phone] = numero_pedido
-    atualizar_telefone_na_planilha(numero_pedido, phone)
 
-    # Salva/atualiza cliente com o pedido vinculado
-    nome_cliente = estado.get("nome_cliente", "")
-    salvar_ou_atualizar_cliente(phone, nome=nome_cliente, pedido=numero_pedido)
-
-    # Vincula retroativamente as imagens que chegaram antes do pedido
-    qtd_retro = preencher_pedido_retroativo(phone, numero_pedido)
-    if qtd_retro > 0:
-        # Fix 2: limita pelo contador em memória (evita duplicatas do Z-API)
-        if estado["imgs_antes_pedido"] > 0:
-            qtd_retro = min(qtd_retro, estado["imgs_antes_pedido"])
-        estado["fotos_recebidas"] = qtd_retro
-        print(f"[Ana] {qtd_retro} fotos retroativas para {phone}")
-
-    # ── Detecta multi-produto ────────────────────────────────────────
+    # ── Detecta multi-produto ────────────────────────────────────────────────
     produtos_parsed = parse_sku_produtos(sku)
-    if len(produtos_parsed) > 1:
+    is_multi = len(produtos_parsed) > 1
+    if is_multi:
         estado["multi_produto"] = True
         estado["produtos"] = produtos_parsed
         estado["produto_ativo_idx"] = -1
@@ -1021,34 +1040,36 @@ def vincular_pedido(phone, numero_pedido):
             phone,
             f"Pedido identificado com sucesso! 😊\n{msg_orientacao_multiproduto(produtos_parsed)}"
         )
-        if qtd_retro > 0:
-            print(f"[Ana] {qtd_retro} fotos retroativas ignoradas (multi-produto sem dimensão definida)")
-        return True
-
-    # ── Produto único — fluxo original ──────────────────────────────
-    if limite > 0:
+    elif limite > 0:
         enviar_mensagem(phone, f"Pedido identificado com sucesso! 😊 Agora é só enviar suas {limite} fotos para darmos continuidade ao seu pedido.")
     else:
         enviar_mensagem(phone, f"Pedido identificado com sucesso! 😊 Pode enviar suas fotos para darmos continuidade ao seu pedido.")
 
-    print(f"[Ana] Pedido {numero_pedido} vinculado: limite={limite} tipo={tipo}")
+    print(f"[Ana] Pedido {numero_pedido} vinculado: limite={estado['limite_fotos']} tipo={tipo}")
 
-    if limite > 0 and qtd_retro >= limite:
-        avaliar_conclusao(phone)
-    elif qtd_retro > 0 and qtd_retro < limite:
-        iniciar_timer(phone, 600, lambda: verificar_inatividade_fotos(phone))
+    # ── Sheets em background — resposta já foi enviada acima ────────────────
+    threading.Thread(
+        target=_vincular_background,
+        args=(phone, numero_pedido, estado, is_multi),
+        daemon=True
+    ).start()
 
     return True
+def _salvar_imagem_em_background(phone, image_url, pedido, tipo_img):
+    """Upload no Drive + Sheets em background, sem bloquear o timer."""
+    try:
+        drive_url = _upload_imagem_drive(image_url, phone, pedido=pedido, tipo=tipo_img)
+        salvar_imagem_pendente(phone, drive_url, pedido, tipo_img)
+    except Exception as e:
+        print(f"[Ana] Erro background imagem {phone}: {e}")
 
 def processar_imagem_recebida(phone, image_url):
     estado = get_estado(phone)
-
     if estado["status"] == "concluido":
         print(f"[Ana] Pedido concluído — imagem de {phone} ignorada")
         return
 
     pedido = estado.get("pedido", "")
-
     tipo_img = ""
     if estado.get("multi_produto"):
         idx = estado.get("produto_ativo_idx", -1)
@@ -1057,30 +1078,31 @@ def processar_imagem_recebida(phone, image_url):
     elif pedido:
         tipo_img = identificar_tipo(estado.get("produto", ""), estado.get("sku", ""))
 
-    drive_url = _upload_imagem_drive(image_url, phone, pedido=pedido, tipo=tipo_img)
-    salvar_imagem_pendente(phone, drive_url, pedido, tipo_img)
+    # ── Upload em background — não bloqueia o timer ────────────────────────
+    threading.Thread(
+        target=_salvar_imagem_em_background,
+        args=(phone, image_url, pedido, tipo_img),
+        daemon=True
+    ).start()
 
+    # ── Incrementa contador e reinicia timer IMEDIATAMENTE ─────────────────
     if pedido:
         if estado.get("multi_produto"):
             _processar_imagem_multiproduto(phone)
             return
-
         estado["fotos_recebidas"] += 1
         fotos = estado["fotos_recebidas"]
         limite = estado["limite_fotos"]
         print(f"[Ana] {phone}: {fotos}/{limite} fotos")
-
         if limite > 0 and fotos >= limite:
-            # Aguarda 10s após última foto antes de concluir/cobrar extras
-            iniciar_timer(phone, 10, lambda: avaliar_conclusao_timer(phone))
+            iniciar_timer(phone, 30, lambda: avaliar_conclusao_timer(phone))
         else:
-            iniciar_timer(phone, 10, lambda: verificar_inatividade_fotos(phone))
+            iniciar_timer(phone, 30, lambda: verificar_inatividade_fotos(phone))
     else:
         estado["imgs_antes_pedido"] += 1
         estado["status"] = "aguardando_pedido"
         iniciar_timer(phone, 30, lambda: pedir_numero_pedido_timer(phone))
         print(f"[Ana] {phone}: imagem sem pedido ({estado['imgs_antes_pedido']}ª)")
-
 def processar_texto_recebido(phone, body):
     estado = get_estado(phone)
     status = estado["status"]
