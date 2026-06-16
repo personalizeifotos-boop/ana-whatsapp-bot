@@ -684,6 +684,24 @@ def preencher_pedido_retroativo(phone, numero_pedido):
         print(f"[Imagens] Erro retroativo: {e}")
         return 0
 
+
+def contar_imagens_pedido(numero_pedido):
+    """Retorna quantas imagens já foram recebidas para um dado número de pedido."""
+    try:
+        ws = get_sheet("Imagens")
+        if ws is None:
+            return 0
+        linhas = ws.get_all_values()
+        count = 0
+        for linha in linhas[1:]:
+            pedido_col = linha[4].strip() if len(linha) >= 5 else ""
+            if pedido_col == numero_pedido:
+                count += 1
+        return count
+    except Exception as e:
+        print(f"[Imagens] Erro ao contar imagens: {e}")
+        return 0
+
 # ── Memória de clientes (aba Clientes no Sheets) ─────────────
 def _suf(phone):
     s = re.sub(r'\D', '', phone)
