@@ -1278,9 +1278,9 @@ def verificar_gmail():
                     if not m_sku:
                         m_sku = re.search(r'SKU[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
                     if m_sku:
-                        sku_raw = re.sub(r'^\d+[-\s]+', '', m_sku.group(1).strip())
-                        # Mantém apenas até o primeiro '[' ou '(' ou SKU code (evita lixo)
-                        sku_raw = re.split(r'[\[\(]', sku_raw)[0].strip()
+                        # Mantém apenas até o primeiro '[' ou '(' (remove códigos internos Shopee)
+                        # NÃO remover dígitos do início — eles são a quantidade (ex: "70 Fotos")
+                        sku_raw = re.split(r'[\[\(]', m_sku.group(1).strip())[0].strip()
                         sku = sku_raw
 
                     # 2) Se SKU tem só quantidade sem dimensão, tenta extrair dimensão do produto
