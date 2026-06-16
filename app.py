@@ -327,7 +327,7 @@ def identificar_tipo(produto, sku):
     return "10X15"
 
 def extrair_limite_fotos(sku):
-    m = re.search(r'(\d+)\s*fotos?', sku, re.IGNORECASE)
+    m = re.search(r'(\d{1,4})\s*fotos?', sku, re.IGNORECASE)
     return int(m.group(1)) if m else 0
 
 def parse_sku_produtos(sku):
@@ -336,7 +336,7 @@ def parse_sku_produtos(sku):
     partes = [p.strip() for p in sku.split('+')]
     resultado = []
     for parte in partes:
-        m = re.search(r'(\d+)\s*fotos?', parte, re.IGNORECASE)
+        m = re.search(r'(\d{1,4})\s*fotos?', parte, re.IGNORECASE)
         if m:
             limite = int(m.group(1))
             tipo = identificar_tipo('', parte)
@@ -351,7 +351,7 @@ def parse_sku_produtos(sku):
 
 def extrair_sku_multiproduto(produto_str, corpo):
     texto = (produto_str + " " + corpo).upper()
-    matches = list(re.finditer(r'(\d+)\s+FOTOS?', texto))
+    matches = list(re.finditer(r'(\d{1,4})\s+FOTOS?', texto))
     if len(matches) < 2:
         return ""
     partes = []
