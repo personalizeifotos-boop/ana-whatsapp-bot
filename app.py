@@ -456,7 +456,7 @@ def get_or_create_drive_folder(service, nome, parent_id):
         print(f"[Drive] Erro ao criar/buscar pasta '{nome}': {e}")
         return parent_id  # fallback: salva na pasta pai
 
-def _upload_imagem_drive(image_url, phone, pedido="", tipo=""):
+def _upload_imagem_drive(image_url, phone, pedido="", tipo="", subpasta=""):
     try:
         req = _url_req.Request(image_url, headers={"User-Agent": "Mozilla/5.0"})
         with _url_req.urlopen(req, timeout=15) as resp:
@@ -478,6 +478,8 @@ def _upload_imagem_drive(image_url, phone, pedido="", tipo=""):
             folder_pedido = get_or_create_drive_folder(service, pedido, folder_tipo)
         else:
             folder_pedido = folder_tipo
+        if subpasta:
+            folder_pedido = get_or_create_drive_folder(service, subpasta, folder_pedido)
 
         timestamp = datetime.now(BRASILIA).strftime("%Y%m%d_%H%M%S")
         phone_clean = re.sub(r'\D', '', phone)
@@ -808,6 +810,12 @@ def verificar_inatividade_fotos(phone):
         return
     limite = estado["limite_fotos"]
     recebidas = estado["fotos_recebidas"]
+    # ── Cenário de cópias: 1 foto recebida para pedido com múltiplas ──────
+    if limite > 1 and recebidas == 1:
+        enviar_mensagem(phone, f"Recebi 1 foto! 📸 Serão {limite} cópias dessa mesma foto?")
+        estado["status"] = "aguardando_confirmacao_copias"
+        print(f"[Ana] {phone}: 1 foto — perguntando {limite} cópias")
+        return
     if limite > 0 and recebidas < limite:
         faltam = limite - recebidas
         enviar_mensagem(
@@ -1055,10 +1063,10 @@ def vincular_pedido(phone, numero_pedido):
     ).start()
 
     return True
-def _salvar_imagem_em_background(phone, image_url, pedido, tipo_img):
+def _salvar_imagem_em_background(phone, image_url, pedido, tipo_img, subpasta=""):
     """Upload no Drive + Sheets em background, sem bloquear o timer."""
     try:
-        drive_url = _upload_imagem_drive(image_url, phone, pedido=pedido, tipo=tipo_img)
+        drive_url = _upload_imagem_drive(image_url, phone, pedido=pedido, tipo=tipo_img, subpasta=subpasta)
         salvar_imagem_pendente(phone, drive_url, pedido, tipo_img)
     except Exception as e:
         print(f"[Ana] Erro background imagem {phone}: {e}")
@@ -1079,6 +1087,7 @@ def processar_imagem_recebida(phone, image_url):
         tipo_img = identificar_tipo(estado.get("produto", ""), estado.get("sku", ""))
 
     # ── Upload em background — não bloqueia o timer ────────────────────────
+    estado["ultima_imagem_url"] = image_url  # guarda para cenário de cópias
     threading.Thread(
         target=_salvar_imagem_em_background,
         args=(phone, image_url, pedido, tipo_img),
@@ -1146,6 +1155,30 @@ def processar_texto_recebido(phone, body):
             return
 
     # ── Resposta sobre fotos extras ───────────────────────────────
+    if status == "aguardando_confirmacao_copias":
+        limite = estado["limite_fotos"]
+        tipo = identificar_tipo(estado["produto"], estado["sku"])
+        pedido_num = estado.get("pedido", "")
+        if any(p in body_low for p in ["sim", "yes", "s", "isso", "correto", "exato", "pode"]):
+            subpasta = f"{limite} cópias"
+            img_url = estado.get("ultima_imagem_url", "")
+            if img_url:
+                threading.Thread(
+                    target=_salvar_imagem_em_background,
+                    args=(phone, img_url, pedido_num, tipo, subpasta),
+                    daemon=True
+                ).start()
+            enviar_mensagem(phone, f"Perfeito! Serão {limite} cópias dessa foto. ✅")
+            enviar_mensagem(phone, MSG_FINALIZAR)
+            estado["status"] = "concluido"
+            cancelar_timer(phone)
+        elif any(p in body_low for p in ["não", "nao", "nã", "no", "n", "vou", "outras", "mais"]):
+            faltam = limite - estado["fotos_recebidas"]
+            estado["status"] = "aguardando_fotos"
+            enviar_mensagem(phone, f"Ok! Pode continuar enviando. Faltam {faltam} foto(s)! 😊")
+            iniciar_timer(phone, 600, lambda: verificar_inatividade_fotos(phone))
+        return
+
     if status == "aguardando_resposta_extras":
         if any(p in body_low for p in ["sim", "yes", "quero", "s"]):
             extras = estado["fotos_extras"]
