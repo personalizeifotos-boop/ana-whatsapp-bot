@@ -327,7 +327,7 @@ def identificar_tipo(produto, sku):
     return "10X15"
 
 def extrair_limite_fotos(sku):
-    m = re.search(r'(\d{1,4})\s*fotos?', sku, re.IGNORECASE)
+    m = re.search(r'(\d{1,3})\s*fotos?', sku, re.IGNORECASE)
     return int(m.group(1)) if m else 0
 
 def parse_sku_produtos(sku):
@@ -336,7 +336,7 @@ def parse_sku_produtos(sku):
     partes = [p.strip() for p in sku.split('+')]
     resultado = []
     for parte in partes:
-        m = re.search(r'(\d{1,4})\s*fotos?', parte, re.IGNORECASE)
+        m = re.search(r'(\d{1,3})\s*fotos?', parte, re.IGNORECASE)
         if m:
             limite = int(m.group(1))
             tipo = identificar_tipo('', parte)
@@ -351,7 +351,7 @@ def parse_sku_produtos(sku):
 
 def extrair_sku_multiproduto(produto_str, corpo):
     texto = (produto_str + " " + corpo).upper()
-    matches = list(re.finditer(r'(\d{1,4})\s+FOTOS?', texto))
+    matches = list(re.finditer(r'(\d{1,3})\s+FOTOS?', texto))
     if len(matches) < 2:
         return ""
     partes = []
@@ -1296,9 +1296,15 @@ def verificar_gmail():
                     if not m_sku:
                         m_sku = re.search(r'SKU[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
                     if m_sku:
-                        # Mantém apenas até o primeiro '[' ou '(' (remove códigos internos Shopee)
-                        # NÃO remover dígitos do início — eles são a quantidade (ex: "70 Fotos")
+                        # 1) Remove tudo a partir de '[' ou '(' (códigos internos Shopee)
                         sku_raw = re.split(r'[\[\(]', m_sku.group(1).strip())[0].strip()
+                        # 2) Remove prefixos numéricos longos da Shopee (ex: "21499081161-" ou "7171 ")
+                        #    Formato: {código 4+ dígitos}{hífen} → remove o código e o hífen
+                        sku_raw = re.sub(r'\d{4,}-', '', sku_raw)
+                        #    Formato: {código 4+ dígitos}{espaço} no início → remove
+                        sku_raw = re.sub(r'^\d{4,}\s*', '', sku_raw).strip()
+                        # 3) Limpa espaços extras
+                        sku_raw = re.sub(r'\s+', ' ', sku_raw).strip()
                         sku = sku_raw
 
                     # 2) Se SKU tem só quantidade sem dimensão, tenta extrair dimensão do produto
