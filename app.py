@@ -1410,6 +1410,10 @@ def verificar_gmail():
                     mp = re.search(r'(At[eÃ©] \d+ de \w+)', corpo, re.IGNORECASE)
                     if mp:
                         prazo = mp.group(1).strip()
+        # Quantidade real vem do SKU (email sempre marca Quantidade=1 unidade)
+                    limite_sku = extrair_limite_fotos(sku)
+                    if limite_sku > 0:
+                        quantidade = str(limite_sku)
 
                     salvar_pedido(
                         numero_pedido=numero, produto=produto,
