@@ -1369,6 +1369,9 @@ def verificar_gmail():
                     m_sku = re.search(r'Varia[Ã§Ã£o]{2,4}[:\s]+([^\n\t<]{3,80})', corpo, re.IGNORECASE)
                     if not m_sku:
                         m_sku = re.search(r'SKU[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
+                                if not m_sku:
+                                                # Shopee multilinha: "SKU\n\n1\n\n1002 - 50 FOTOS"
+                                                m_sku = re.search(r'SKU\s+\d+\s+([^\n]{3,60})', corpo, re.IGNORECASE)
                     if m_sku:
                         # 1) Remove tudo a partir de '[' ou '(' (cÃ³digos internos Shopee)
                         sku_raw = re.split(r'[\[\(]', m_sku.group(1).strip())[0].strip()
@@ -1407,7 +1410,7 @@ def verificar_gmail():
                     mc = re.search(r'Envie o pedido para ([^\.\n,]+)', corpo)
                     if mc:
                         cliente = mc.group(1).strip()
-                    mp = re.search(r'(At[eÃ©] \d+ de \w+)', corpo, re.IGNORECASE)
+                    mp = re.search(r'(At\S*\s+\d+\s+de\s+\w+)', corpo, re.IGNORECASE)
                     if mp:
                         prazo = mp.group(1).strip()
         # Quantidade real vem do SKU (email sempre marca Quantidade=1 unidade)
