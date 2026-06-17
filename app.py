@@ -17,20 +17,20 @@ from googleapiclient.http import MediaInMemoryUpload
 BRASILIA = pytz.timezone("America/Sao_Paulo")
 app = Flask(__name__)
 
-# ── Exibe email da conta de serviço no log de inicialização ──────────────────
+# ââ Exibe email da conta de serviÃ§o no log de inicializaÃ§Ã£o ââââââââââââââââââ
 try:
     _creds_raw = os.environ.get("GOOGLE_CREDENTIALS_JSON", "")
     if _creds_raw:
         _creds_data = json.loads(_creds_raw)
-        print(f"[Setup] Conta de serviço Google: {_creds_data.get('client_email', 'não encontrado')}")
+        print(f"[Setup] Conta de serviÃ§o Google: {_creds_data.get('client_email', 'nÃ£o encontrado')}")
 except Exception as _e:
     print(f"[Setup] Erro ao ler credenciais: {_e}")
 
-# ── Controle da Ana ───────────────────────────────────────────
+# ââ Controle da Ana âââââââââââââââââââââââââââââââââââââââââââ
 # Defina como True para reativar o envio de mensagens da Ana
 ANA_ATIVA = True
 
-# ── Configurações ────────────────────────────────────────────
+# ââ ConfiguraÃ§Ãµes ââââââââââââââââââââââââââââââââââââââââââââ
 GMAIL_USER = os.environ.get("GMAIL_USER")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 SPREADSHEET_ID = "1qbLhiP9g1I9Lp3LemmOw5qoNfW8y6wQyBzafseft6Fc"
@@ -38,26 +38,26 @@ ZAPI_INSTANCE = "3F353F900771725020A0F6B0730C054E"
 ZAPI_TOKEN = "2E4ECDD70099CF7EDCEAF35E"
 ZAPI_BASE_URL = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/token/{ZAPI_TOKEN}"
 
-# ── Mensagens da Ana ─────────────────────────────────────────
+# ââ Mensagens da Ana âââââââââââââââââââââââââââââââââââââââââ
 MSG_SAUDACAO = (
-    "Olá, seja bem-vindo à Personalizei! Obrigado pela sua compra. 😊\n\n"
-    "Antes de enviar qualquer imagem, é de extrema importância que você nos envie primeiro "
-    "o número do pedido. Esse número está logo após as letras ID: no seu comprovante de compra.\n\n"
-    "Por favor, digite ou copie e cole o número — não envie print, pois nosso sistema "
-    "não consegue identificar imagens de texto."
+    "OlÃ¡, seja bem-vindo Ã  Personalizei! Obrigado pela sua compra. ð\n\n"
+    "Antes de enviar qualquer imagem, Ã© de extrema importÃ¢ncia que vocÃª nos envie primeiro "
+    "o nÃºmero do pedido. Esse nÃºmero estÃ¡ logo apÃ³s as letras ID: no seu comprovante de compra.\n\n"
+    "Por favor, digite ou copie e cole o nÃºmero â nÃ£o envie print, pois nosso sistema "
+    "nÃ£o consegue identificar imagens de texto."
 )
 MSG_SAUDACAO_RETORNO = (
-    "Olá{nome_part}, que ótimo ter você de volta! 😊\n\n"
-    "Para darmos continuidade, por favor nos envie o número do novo pedido "
-    "(vem logo após 'ID:' no seu comprovante de compra)."
+    "OlÃ¡{nome_part}, que Ã³timo ter vocÃª de volta! ð\n\n"
+    "Para darmos continuidade, por favor nos envie o nÃºmero do novo pedido "
+    "(vem logo apÃ³s 'ID:' no seu comprovante de compra)."
 )
 MSG_PEDIR_PEDIDO = (
-    "Por favor envie o número do pedido, esse número vem logo depois das letras ID:, "
-    "você pode encontrar esse número no seu histórico de pedidos, "
-    "sem esse número não conseguimos te identificar."
+    "Por favor envie o nÃºmero do pedido, esse nÃºmero vem logo depois das letras ID:, "
+    "vocÃª pode encontrar esse nÃºmero no seu histÃ³rico de pedidos, "
+    "sem esse nÃºmero nÃ£o conseguimos te identificar."
 )
 MSG_FINALIZAR = (
-    "Perfeito, seu pedido já está sendo preparado e será enviado no menor tempo possível. "
+    "Perfeito, seu pedido jÃ¡ estÃ¡ sendo preparado e serÃ¡ enviado no menor tempo possÃ­vel. "
     "Segue abaixo o link da nossa loja, caso queira conhecer todos os nossos produtos: "
     "https://shopee.com.br/personalizei_fotografias?located_flash_sale=238855072727041"
     "&share_from=isfs&shop=1331254404&stm_medium=referral&stm_source=rw&tab=5"
@@ -67,13 +67,13 @@ MSG_PIX = (
     "Segue a chave PIX\n"
     "Titular: Rodrigo Vieira Monteiro\n"
     "Chave PIX: 58733941000114\n"
-    "Após efetuar o pagamento pela chave PIX nos envie o comprovante por favor."
+    "ApÃ³s efetuar o pagamento pela chave PIX nos envie o comprovante por favor."
 )
 
-# ── Pasta raiz no Google Drive ───────────────────────────────
+# ââ Pasta raiz no Google Drive âââââââââââââââââââââââââââââââ
 PEDIDOS_SHOPEE_FOLDER_ID = "1ikovzBRkVLdR8kqTpnSlpy9WyC-dN1IO"
 
-# ── Tabela de preços por foto extra ─────────────────────────
+# ââ Tabela de preÃ§os por foto extra âââââââââââââââââââââââââ
 PRECOS_EXTRA = {
     "10X15": 1.00,
     "15X21": 1.50,
@@ -89,24 +89,24 @@ PRECOS_EXTRA = {
     "Etiqueta": 1.00,
 }
 
-# Nome de exibição (com acentos) para cada tipo — usado no Drive e nas mensagens
+# Nome de exibiÃ§Ã£o (com acentos) para cada tipo â usado no Drive e nas mensagens
 NOME_PASTA_TIPO = {
     "10X15":                    "10X15",
     "15X21":                    "15X21",
     "A4":                       "A4",
     "Cartao de Visita":         "Cartao de Visita",
     "Etiqueta":                 "Etiqueta",
-    "Fotos Retro":              "Fotos Retrô",
-    "Fotos Retro com ima":      "Fotos Retrô com imã",
+    "Fotos Retro":              "Fotos RetrÃ´",
+    "Fotos Retro com ima":      "Fotos RetrÃ´ com imÃ£",
     "Mini Fotos":               "Mini Fotos",
-    "Mini Fotos com ima":       "Mini Fotos com imã",
-    "Mini Fotos Retro":         "Mini Fotos Retrô",
-    "Mini Fotos Retro com ima": "Mini Fotos Retrô com imã",
+    "Mini Fotos com ima":       "Mini Fotos com imÃ£",
+    "Mini Fotos Retro":         "Mini Fotos RetrÃ´",
+    "Mini Fotos Retro com ima": "Mini Fotos RetrÃ´ com imÃ£",
     "Tirinha":                  "Tirinha",
 }
 
-# Mapeamento: palavra-chave (maiúsculo, sem acento) → chave interna do tipo
-# Ordem importa: mais específico primeiro
+# Mapeamento: palavra-chave (maiÃºsculo, sem acento) â chave interna do tipo
+# Ordem importa: mais especÃ­fico primeiro
 MAPEAMENTO_TIPO = [
     ("MINI RETRO COM IMA",  "Mini Fotos Retro com ima"),
     ("MINI RETRO COM IMA",  "Mini Fotos Retro com ima"),
@@ -135,76 +135,76 @@ MAPEAMENTO_TIPO = [
 
 PEDIDO_REGEX = re.compile(r'\b([A-Z0-9]{10,20})\b')
 
-# ── FAQ baseado em conversas reais com clientes ──────────────
+# ââ FAQ baseado em conversas reais com clientes ââââââââââââââ
 # Cada entrada: (lista de palavras-chave, resposta)
 FAQ_RESPOSTAS = [
     (
-        ["como envio", "como mando", "como faço para enviar", "como enviar", "como mandar",
+        ["como envio", "como mando", "como faÃ§o para enviar", "como enviar", "como mandar",
          "enviar fotos", "mandar fotos", "onde envio", "onde mando"],
-        "É simples! É só enviar as fotos diretamente aqui pelo WhatsApp mesmo. 😊\n"
-        "Mas antes de enviar as fotos, não esqueça de nos passar o número do pedido — "
-        "ele está logo após 'ID:' no seu comprovante de compra da Shopee."
+        "Ã simples! Ã sÃ³ enviar as fotos diretamente aqui pelo WhatsApp mesmo. ð\n"
+        "Mas antes de enviar as fotos, nÃ£o esqueÃ§a de nos passar o nÃºmero do pedido â "
+        "ele estÃ¡ logo apÃ³s 'ID:' no seu comprovante de compra da Shopee."
     ),
     (
         ["cancelar", "cancelamento", "desistir", "devolver", "estornar"],
-        "Você pode cancelar diretamente pela Shopee, sem problemas! 😊 "
-        "Mas se quiser, pode comprar mais fotos diretamente conosco e aproveitamos o pedido atual para enviar junto — "
-        "assim fica mais prático. É só me dizer quantas fotos você quer no total!"
+        "VocÃª pode cancelar diretamente pela Shopee, sem problemas! ð "
+        "Mas se quiser, pode comprar mais fotos diretamente conosco e aproveitamos o pedido atual para enviar junto â "
+        "assim fica mais prÃ¡tico. Ã sÃ³ me dizer quantas fotos vocÃª quer no total!"
     ),
     (
-        ["prazo", "quando chega", "quanto tempo", "quando fica pronto", "previsao", "previsão", "dias"],
-        "Após recebermos todas as suas fotos, seu pedido é preparado e postado em até 3 dias úteis. 📦"
+        ["prazo", "quando chega", "quanto tempo", "quando fica pronto", "previsao", "previsÃ£o", "dias"],
+        "ApÃ³s recebermos todas as suas fotos, seu pedido Ã© preparado e postado em atÃ© 3 dias Ãºteis. ð¦"
     ),
     (
-        ["rastreio", "rastreamento", "codigo", "código", "postado", "enviou", "enviado"],
-        "O código de rastreio é enviado pela Shopee assim que seu pedido é postado. "
-        "Verifique na aba 'Meus Pedidos' do aplicativo da Shopee. 😊"
+        ["rastreio", "rastreamento", "codigo", "cÃ³digo", "postado", "enviou", "enviado"],
+        "O cÃ³digo de rastreio Ã© enviado pela Shopee assim que seu pedido Ã© postado. "
+        "Verifique na aba 'Meus Pedidos' do aplicativo da Shopee. ð"
     ),
     (
         ["frete", "entrega", "correios", "transportadora"],
-        "O frete é calculado pela Shopee de acordo com o seu CEP e aparece no momento da compra."
+        "O frete Ã© calculado pela Shopee de acordo com o seu CEP e aparece no momento da compra."
     ),
     (
-        ["qualidade", "resolucao", "resolução", "borrada", "pixelada", "nitida", "nítida"],
-        "Trabalhamos com impressão de alta qualidade! Para melhores resultados, "
-        "recomendamos enviar fotos com boa resolução — evite fotos com zoom excessivo ou tiradas de tela. 📸"
+        ["qualidade", "resolucao", "resoluÃ§Ã£o", "borrada", "pixelada", "nitida", "nÃ­tida"],
+        "Trabalhamos com impressÃ£o de alta qualidade! Para melhores resultados, "
+        "recomendamos enviar fotos com boa resoluÃ§Ã£o â evite fotos com zoom excessivo ou tiradas de tela. ð¸"
     ),
     (
-        ["shopee", "loja", "produtos", "catalogo", "catálogo", "outros produtos"],
-        "Você pode conferir todos os nossos produtos na nossa loja da Shopee: "
-        "https://shopee.com.br/personalizei_fotografias 😊"
+        ["shopee", "loja", "produtos", "catalogo", "catÃ¡logo", "outros produtos"],
+        "VocÃª pode conferir todos os nossos produtos na nossa loja da Shopee: "
+        "https://shopee.com.br/personalizei_fotografias ð"
     ),
     (
-        ["quanto custa", "preço", "preco", "valor", "tabela", "quanto é", "quanto e",
-         "custa", "imã", "ima", "iman", "custo", "cobrado", "cobra", "pago", "paga"],
-        "Nossos preços por foto são:\n"
-        "• 10x15 cm — R$ 1,00\n"
-        "• Mini foto — R$ 1,00\n"
-        "• Polaroide — R$ 1,00\n"
-        "• 15x21 cm — R$ 1,50\n"
-        "• Imã / Mini imã — R$ 2,50\n"
-        "• A4 — R$ 3,00\n\n"
-        "Esses valores são cobrados apenas para fotos enviadas além da quantidade do seu pedido. 😊"
+        ["quanto custa", "preÃ§o", "preco", "valor", "tabela", "quanto Ã©", "quanto e",
+         "custa", "imÃ£", "ima", "iman", "custo", "cobrado", "cobra", "pago", "paga"],
+        "Nossos preÃ§os por foto sÃ£o:\n"
+        "â¢ 10x15 cm â R$ 1,00\n"
+        "â¢ Mini foto â R$ 1,00\n"
+        "â¢ Polaroide â R$ 1,00\n"
+        "â¢ 15x21 cm â R$ 1,50\n"
+        "â¢ ImÃ£ / Mini imÃ£ â R$ 2,50\n"
+        "â¢ A4 â R$ 3,00\n\n"
+        "Esses valores sÃ£o cobrados apenas para fotos enviadas alÃ©m da quantidade do seu pedido. ð"
     ),
 ]
 
 
 def calcular_preco(texto):
     """
-    Detecta frases como 'quanto daria 37 fotos imã' e retorna
-    a resposta com o total calculado. Retorna None se não detectar.
+    Detecta frases como 'quanto daria 37 fotos imÃ£' e retorna
+    a resposta com o total calculado. Retorna None se nÃ£o detectar.
     """
     t = texto.lower().strip()
 
-    # Padrões: "quanto daria/fica/sai/custa X fotos [tipo]"
+    # PadrÃµes: "quanto daria/fica/sai/custa X fotos [tipo]"
     m = re.search(
-        r'(?:quanto (?:daria|fica|sai|custa|seria|custaria)|valor de|preco de|preço de)'
-        r'\s+(\d+)\s+(?:fotos?|imãs?|imas?)?\s*(.*)',
+        r'(?:quanto (?:daria|fica|sai|custa|seria|custaria)|valor de|preco de|preÃ§o de)'
+        r'\s+(\d+)\s+(?:fotos?|imÃ£s?|imas?)?\s*(.*)',
         t
     )
     if not m:
         # Tenta "X fotos [tipo] quanto custa"
-        m2 = re.search(r'(\d+)\s+(?:fotos?\s+)?(\w[\w\s]*)(?:quanto|valor|preco|preço)', t)
+        m2 = re.search(r'(\d+)\s+(?:fotos?\s+)?(\w[\w\s]*)(?:quanto|valor|preco|preÃ§o)', t)
         if m2:
             quantidade = int(m2.group(1))
             tipo_raw = m2.group(2).strip()
@@ -214,22 +214,22 @@ def calcular_preco(texto):
         quantidade = int(m.group(1))
         tipo_raw = (m.group(2) or "").strip()
 
-    # Remove palavras desnecessárias do tipo
+    # Remove palavras desnecessÃ¡rias do tipo
     for stop in ["de", "foto", "fotos", "imagem", "imagens"]:
         tipo_raw = re.sub(r'\b' + stop + r'\b', '', tipo_raw).strip()
 
     tipo_raw_upper = tipo_raw.upper()
 
-    # Mapear para preço
+    # Mapear para preÃ§o
     preco_unitario = None
     nome_tipo = None
 
-    if any(k in tipo_raw_upper for k in ["MINI IMA", "MINI IMÃ", "MINIIMA", "MINIIMÃ"]):
+    if any(k in tipo_raw_upper for k in ["MINI IMA", "MINI IMÃ", "MINIIMA", "MINIIMÃ"]):
         preco_unitario = 2.50
-        nome_tipo = "Mini imã"
-    elif any(k in tipo_raw_upper for k in ["IMA", "IMÃ", "IMAN", "IMÁN", "IMAG"]) and "IMAGEM" not in tipo_raw_upper:
+        nome_tipo = "Mini imÃ£"
+    elif any(k in tipo_raw_upper for k in ["IMA", "IMÃ", "IMAN", "IMÃN", "IMAG"]) and "IMAGEM" not in tipo_raw_upper:
         preco_unitario = 2.50
-        nome_tipo = "Imã"
+        nome_tipo = "ImÃ£"
     elif any(k in tipo_raw_upper for k in ["MINI FOTO", "MINIFOTO"]):
         preco_unitario = 1.00
         nome_tipo = "Mini foto"
@@ -246,7 +246,7 @@ def calcular_preco(texto):
         preco_unitario = 3.00
         nome_tipo = "A4"
     elif not tipo_raw_upper:
-        # Sem tipo especificado — retornar tabela
+        # Sem tipo especificado â retornar tabela
         return None
 
     if preco_unitario is None:
@@ -258,7 +258,7 @@ def calcular_preco(texto):
 
     return (
         f"{quantidade} fotos {nome_tipo} ficam {total_str}. \U0001f60a\n"
-        f"(cada {nome_tipo} custa {unitario_str} — cobrado apenas para fotos além da quantidade do pedido)"
+        f"(cada {nome_tipo} custa {unitario_str} â cobrado apenas para fotos alÃ©m da quantidade do pedido)"
     )
 
 def verificar_faq(texto_lower):
@@ -270,30 +270,30 @@ def verificar_faq(texto_lower):
 
 def tentar_extrair_nome(texto):
     """
-    Tenta extrair nome próprio de uma mensagem de texto.
-    Padrões: 'Meu nome é X', 'Me chamo X', ou mensagem que parece só um nome (2-5 palavras).
+    Tenta extrair nome prÃ³prio de uma mensagem de texto.
+    PadrÃµes: 'Meu nome Ã© X', 'Me chamo X', ou mensagem que parece sÃ³ um nome (2-5 palavras).
     """
     t = texto.strip()
-    # "Meu nome é X" / "Me chamo X" / "Sou a/o X"
+    # "Meu nome Ã© X" / "Me chamo X" / "Sou a/o X"
     m = re.match(
-        r'(?:meu nome [eé]|me chamo|sou (?:a |o )?)\s*(.{4,50})',
+        r'(?:meu nome [eÃ©]|me chamo|sou (?:a |o )?)\s*(.{4,50})',
         t, re.IGNORECASE
     )
     if m:
         nome = m.group(1).strip().rstrip('.,!?')
-        if re.match(r'^[A-Za-zÀ-ú\s]+$', nome):
+        if re.match(r'^[A-Za-zÃ-Ãº\s]+$', nome):
             return nome.title()
-    # Mensagem que parece ser só um nome (2-5 palavras, apenas letras)
-    if re.match(r'^[A-Za-zÀ-ú\s]{5,60}$', t):
+    # Mensagem que parece ser sÃ³ um nome (2-5 palavras, apenas letras)
+    if re.match(r'^[A-Za-zÃ-Ãº\s]{5,60}$', t):
         partes = t.split()
         if 2 <= len(partes) <= 5 and all(len(p) >= 2 for p in partes):
             return t.title()
     return None
 
-# ── Estado em memória por telefone ───────────────────────────
-estado_clientes = {}   # phone → dict de estado
-timers_ativos = {}     # phone → threading.Timer
-telefone_pedido = {}   # legado: phone → pedido
+# ââ Estado em memÃ³ria por telefone âââââââââââââââââââââââââââ
+estado_clientes = {}   # phone â dict de estado
+timers_ativos = {}     # phone â threading.Timer
+telefone_pedido = {}   # legado: phone â pedido
 
 def get_estado(phone):
     if phone not in estado_clientes:
@@ -307,7 +307,7 @@ def get_estado(phone):
             "imgs_antes_pedido": 0,
             "fotos_extras": 0,
             "valor_extra": 0.0,
-            "nome_cliente": "",        # nome extraído das mensagens
+            "nome_cliente": "",        # nome extraÃ­do das mensagens
             # Multi-produto
             "multi_produto": False,
             "produtos": [],
@@ -317,9 +317,9 @@ def get_estado(phone):
 
 def identificar_tipo(produto, sku):
     texto = (produto + " " + sku).upper()
-    for orig, sub in [("Ã","A"),("Â","A"),("Á","A"),("À","A"),("É","E"),
-                      ("Ê","E"),("Í","I"),("Ó","O"),("Ô","O"),("Õ","O"),
-                      ("Ú","U"),("Ç","C")]:
+    for orig, sub in [("Ã","A"),("Ã","A"),("Ã","A"),("Ã","A"),("Ã","E"),
+                      ("Ã","E"),("Ã","I"),("Ã","O"),("Ã","O"),("Ã","O"),
+                      ("Ã","U"),("Ã","C")]:
         texto = texto.replace(orig, sub)
     for chave, tipo in MAPEAMENTO_TIPO:
         if chave in texto:
@@ -366,28 +366,28 @@ def extrair_sku_multiproduto(produto_str, corpo):
     return " + ".join(partes) if len(partes) > 1 else ""
 
 def msg_orientacao_multiproduto(produtos):
-    linhas = "\n".join(f"• {p['limite']} fotos {p['tipo']}" for p in produtos)
+    linhas = "\n".join(f"â¢ {p['limite']} fotos {p['tipo']}" for p in produtos)
     return (
         f"Identificamos que seu pedido possui {len(produtos)} produtos:\n"
         f"{linhas}\n\n"
         "Para organizarmos tudo certinho, envie as fotos de cada produto "
-        "separadamente, indicando a dimensão antes ou depois de cada lote. "
+        "separadamente, indicando a dimensÃ£o antes ou depois de cada lote. "
         "Exemplo: escreva '10X15' e envie as fotos, depois escreva '15X21' "
-        "e envie as demais. 😊"
+        "e envie as demais. ð"
     )
 
 def _detectar_tipo_na_mensagem(texto):
     t = texto.upper()
-    for orig, sub in [("Ã","A"),("Â","A"),("Á","A"),("À","A"),("É","E"),
-                      ("Ê","E"),("Í","I"),("Ó","O"),("Ô","O"),("Õ","O"),
-                      ("Ú","U"),("Ç","C")]:
+    for orig, sub in [("Ã","A"),("Ã","A"),("Ã","A"),("Ã","A"),("Ã","E"),
+                      ("Ã","E"),("Ã","I"),("Ã","O"),("Ã","O"),("Ã","O"),
+                      ("Ã","U"),("Ã","C")]:
         t = t.replace(orig, sub)
     for chave, tipo in MAPEAMENTO_TIPO:
         if chave in t:
             return tipo
     return None
 
-# ── Z-API: envio de mensagens ─────────────────────────────────
+# ââ Z-API: envio de mensagens âââââââââââââââââââââââââââââââââ
 def enviar_mensagem(phone, mensagem):
     if not ANA_ATIVA:
         print(f"[Ana DESATIVADA] Mensagem bloqueada para {phone}: {mensagem[:80]}")
@@ -402,20 +402,20 @@ def enviar_mensagem(phone, mensagem):
                            })
     try:
         with _url_req.urlopen(req, timeout=15):
-            print(f"[Z-API] ✓ → {phone_num}: {mensagem[:80]}...")
+            print(f"[Z-API] â â {phone_num}: {mensagem[:80]}...")
             return True
     except Exception as e:
-        print(f"[Z-API] ✗ Erro para {phone_num}: {e}")
+        print(f"[Z-API] â Erro para {phone_num}: {e}")
         return False
 
-# ── Google Drive ──────────────────────────────────────────────
-_drive_folder_cache = {}  # (nome, parent_id) → folder_id
+# ââ Google Drive ââââââââââââââââââââââââââââââââââââââââââââââ
+_drive_folder_cache = {}  # (nome, parent_id) â folder_id
 
 def _drive_service():
     """Retorna service do Drive usando a mesma service account das Sheets."""
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
     if not creds_json:
-        print("[Drive] GOOGLE_CREDENTIALS_JSON não configurado.")
+        print("[Drive] GOOGLE_CREDENTIALS_JSON nÃ£o configurado.")
         return None
     try:
         from google.oauth2.service_account import Credentials as _SACredentials
@@ -426,11 +426,11 @@ def _drive_service():
         )
         return build("drive", "v3", credentials=creds)
     except Exception as e:
-        print(f"[Drive] Erro ao criar serviço: {e}")
+        print(f"[Drive] Erro ao criar serviÃ§o: {e}")
         return None
 
 def get_or_create_drive_folder(service, nome, parent_id):
-    """Retorna o ID de uma pasta, criando se não existir. Usa cache."""
+    """Retorna o ID de uma pasta, criando se nÃ£o existir. Usa cache."""
     cache_key = (nome, parent_id)
     if cache_key in _drive_folder_cache:
         return _drive_folder_cache[cache_key]
@@ -462,14 +462,14 @@ def _upload_imagem_drive(image_url, phone, pedido="", tipo="", subpasta=""):
         with _url_req.urlopen(req, timeout=15) as resp:
             image_bytes = resp.read()
         if len(image_bytes) < 500:
-            print(f"[Drive] Imagem muito pequena ({len(image_bytes)}B) — URL expirada?")
+            print(f"[Drive] Imagem muito pequena ({len(image_bytes)}B) â URL expirada?")
             return image_url
 
         service = _drive_service()
         if not service:
             return image_url
 
-        # ── Hierarquia: PEDIDOS_SHOPEE / tipo / pedido ────────────────
+        # ââ Hierarquia: PEDIDOS_SHOPEE / tipo / pedido ââââââââââââââââ
         nome_pasta_tipo = NOME_PASTA_TIPO.get(tipo, tipo or "Sem Categoria")
         folder_tipo = get_or_create_drive_folder(
             service, nome_pasta_tipo, PEDIDOS_SHOPEE_FOLDER_ID
@@ -494,7 +494,7 @@ def _upload_imagem_drive(image_url, phone, pedido="", tipo="", subpasta=""):
             fileId=file_id, body={"type": "anyone", "role": "reader"}
         ).execute()
         drive_url = f"https://drive.google.com/uc?id={file_id}&export=download"
-        print(f"[Drive] ✓ {filename} → {nome_pasta_tipo}/{pedido or '-'} ({len(image_bytes)//1024}KB)")
+        print(f"[Drive] â {filename} â {nome_pasta_tipo}/{pedido or '-'} ({len(image_bytes)//1024}KB)")
         return drive_url
     except Exception as e:
         print(f"[Drive] Erro: {e}")
@@ -546,13 +546,13 @@ def processar_pasta_drive(phone, folder_id):
         if not arquivos:
             enviar_mensagem(
                 phone,
-                "❌ Não consegui acessar as fotos do link enviado. "
-                "Verifique se o link está compartilhado como 'Qualquer pessoa com o link' e tente novamente, "
+                "â NÃ£o consegui acessar as fotos do link enviado. "
+                "Verifique se o link estÃ¡ compartilhado como 'Qualquer pessoa com o link' e tente novamente, "
                 "ou envie as fotos diretamente pelo WhatsApp."
             )
             return
         qtd = len(arquivos)
-        enviar_mensagem(phone, f"📎 Encontrei {qtd} foto(s) no link. Baixando e processando, aguarde...")
+        enviar_mensagem(phone, f"ð Encontrei {qtd} foto(s) no link. Baixando e processando, aguarde...")
         print(f"[Drive] Processando {qtd} imagens do Drive para {phone}")
         for arq in arquivos:
             file_id = arq["id"]
@@ -564,11 +564,11 @@ def processar_pasta_drive(phone, folder_id):
         print(f"[Drive] Erro ao processar pasta para {phone}: {e}")
         enviar_mensagem(
             phone,
-            "❌ Ocorreu um erro ao baixar as fotos do link. "
+            "â Ocorreu um erro ao baixar as fotos do link. "
             "Por favor, envie as fotos diretamente pelo WhatsApp."
         )
 
-# ── Google Sheets ─────────────────────────────────────────────
+# ââ Google Sheets âââââââââââââââââââââââââââââââââââââââââââââ
 def _gc():
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
     if not creds_json:
@@ -656,7 +656,7 @@ def salvar_imagem_pendente(phone, image_url, pedido="", tipo=""):
         if ws is None:
             return
         data = datetime.now(BRASILIA).strftime("%d/%m/%Y %H:%M")
-        # Fix 1: Dedup — ignora URL já registrada (Z-API duplica eventos)
+        # Fix 1: Dedup â ignora URL jÃ¡ registrada (Z-API duplica eventos)
         suf = re.sub(r'\D', '', phone)
         suf = suf[-11:] if len(suf) >= 11 else suf
         for linha in ws.get_all_values()[1:]:
@@ -687,7 +687,7 @@ def preencher_pedido_retroativo(phone, numero_pedido):
                 updates.append({'range': f'E{i}', 'values': [[numero_pedido]]})
         if updates:
             ws.batch_update(updates)
-            print(f"[Imagens] {len(updates)} imagens → pedido {numero_pedido}")
+            print(f"[Imagens] {len(updates)} imagens â pedido {numero_pedido}")
         return len(updates)
     except Exception as e:
         print(f"[Imagens] Erro retroativo: {e}")
@@ -695,7 +695,7 @@ def preencher_pedido_retroativo(phone, numero_pedido):
 
 
 def contar_imagens_pedido(numero_pedido):
-    """Retorna quantas imagens já foram recebidas para um dado número de pedido."""
+    """Retorna quantas imagens jÃ¡ foram recebidas para um dado nÃºmero de pedido."""
     try:
         ws = get_sheet("Imagens")
         if ws is None:
@@ -711,14 +711,14 @@ def contar_imagens_pedido(numero_pedido):
         print(f"[Imagens] Erro ao contar imagens: {e}")
         return 0
 
-# ── Memória de clientes (aba Clientes no Sheets) ─────────────
+# ââ MemÃ³ria de clientes (aba Clientes no Sheets) âââââââââââââ
 def _suf(phone):
     s = re.sub(r'\D', '', phone)
     return s[-11:] if len(s) >= 11 else s
 
 def carregar_cliente(phone):
     """
-    Carrega histórico do cliente.
+    Carrega histÃ³rico do cliente.
     Retorna dict {nome, primeiro_contato, ultimo_pedido, total_pedidos, pedidos} ou None se novo.
     """
     try:
@@ -756,7 +756,7 @@ def salvar_ou_atualizar_cliente(phone, nome="", pedido=""):
             if not linha:
                 continue
             if _suf(linha[0]) == suf:
-                # Cliente existente — atualiza campos
+                # Cliente existente â atualiza campos
                 updates = []
                 nome_atual = linha[1].strip() if len(linha) > 1 else ""
                 total = int(linha[4].strip()) if len(linha) > 4 and linha[4].strip().isdigit() else 0
@@ -779,7 +779,7 @@ def salvar_ou_atualizar_cliente(phone, nome="", pedido=""):
     except Exception as e:
         print(f"[Clientes] Erro ao salvar {phone}: {e}")
 
-# ── Timers ────────────────────────────────────────────────────
+# ââ Timers ââââââââââââââââââââââââââââââââââââââââââââââââââââ
 def cancelar_timer(phone):
     t = timers_ativos.get(phone)
     if t:
@@ -793,7 +793,7 @@ def iniciar_timer(phone, segundos, callback):
     t.start()
     timers_ativos[phone] = t
 
-# ── Lógica de conversa ────────────────────────────────────────
+# ââ LÃ³gica de conversa ââââââââââââââââââââââââââââââââââââââââ
 def pedir_numero_pedido_timer(phone):
     estado = get_estado(phone)
     if not estado["pedido"]:
@@ -810,17 +810,17 @@ def verificar_inatividade_fotos(phone):
         return
     limite = estado["limite_fotos"]
     recebidas = estado["fotos_recebidas"]
-    # ── Cenário de cópias: 1 foto recebida para pedido com múltiplas ──────
+    # ââ CenÃ¡rio de cÃ³pias: 1 foto recebida para pedido com mÃºltiplas ââââââ
     if limite > 1 and recebidas == 1:
-        enviar_mensagem(phone, f"Recebi 1 foto! 📸 Serão {limite} cópias dessa mesma foto?")
+        enviar_mensagem(phone, f"Recebi 1 foto! ð¸ SerÃ£o {limite} cÃ³pias dessa mesma foto?")
         estado["status"] = "aguardando_confirmacao_copias"
-        print(f"[Ana] {phone}: 1 foto — perguntando {limite} cópias")
+        print(f"[Ana] {phone}: 1 foto â perguntando {limite} cÃ³pias")
         return
     if limite > 0 and recebidas < limite:
         faltam = limite - recebidas
         enviar_mensagem(
             phone,
-            f"Recebemos {recebidas} foto(s), mas seu pedido é de {limite}. \U0001f60a\n"
+            f"Recebemos {recebidas} foto(s), mas seu pedido Ã© de {limite}. \U0001f60a\n"
             f"Faltam {faltam} foto(s) para completar seu pedido!"
         )
         print(f"[Ana] Timer 10s: faltando {faltam} fotos para {phone}")
@@ -835,7 +835,7 @@ def _pedir_dimensao_timer(phone):
         )
         enviar_mensagem(
             phone,
-            f"Recebemos suas fotos! Por favor, nos informe a dimensão delas "
+            f"Recebemos suas fotos! Por favor, nos informe a dimensÃ£o delas "
             f"({tipos_pendentes})."
         )
 
@@ -860,7 +860,7 @@ def _processar_imagem_multiproduto(phone):
     if idx < 0:
         estado["imgs_antes_pedido"] += 1
         iniciar_timer(phone, 30, lambda: _pedir_dimensao_timer(phone))
-        print(f"[Ana] Multi {phone}: imagem sem dimensão ativa ({estado['imgs_antes_pedido']}ª)")
+        print(f"[Ana] Multi {phone}: imagem sem dimensÃ£o ativa ({estado['imgs_antes_pedido']}Âª)")
         return
 
     p = produtos[idx]
@@ -880,58 +880,70 @@ def _processar_imagem_multiproduto(phone):
                 estado["produto_ativo_idx"] = produtos.index(proximo)
                 enviar_mensagem(
                     phone,
-                    f"✅ {p['limite']} fotos {p['tipo']} recebidas! "
+                    f"â {p['limite']} fotos {p['tipo']} recebidas! "
                     f"Agora envie as {proximo['limite']} fotos {proximo['tipo']}."
                 )
     else:
         iniciar_timer(phone, 600, lambda: _verificar_inatividade_multiproduto(phone))
 
 def reavaliar_apos_delecao(phone):
-    """Reavalia contagem 10s após cliente deletar uma foto."""
+    """Reavalia contagem 30s apÃ³s cliente deletar uma foto."""
     estado = get_estado(phone)
-    if estado["status"] != "aguardando_fotos":
+    status_atual = estado["status"]
+    if status_atual not in ("aguardando_fotos", "aguardando_descarte"):
         return
     limite = estado["limite_fotos"]
     recebidas = estado["fotos_recebidas"]
     tipo = identificar_tipo(estado.get("produto", ""), estado.get("sku", ""))
 
     if limite > 0 and recebidas == limite:
-        # Bateu exatamente — concluir
+        # Bateu exatamente → concluir
         enviar_mensagem(phone, f"Perfeito, {limite} fotos {tipo}! \U0001f60a")
         enviar_mensagem(phone, MSG_FINALIZAR)
         estado["status"] = "concluido"
         cancelar_timer(phone)
-        print(f"[Ana] Deleção → pedido concluído exato: {phone}")
+        print(f"[Ana] Dele\u00e7\u00e3o \u2192 pedido conclu\u00eddo exato: {phone}")
 
     elif limite > 0 and recebidas > limite:
-        # Ainda tem extras
         extras = recebidas - limite
-        preco = PRECOS_EXTRA.get(tipo, 1.00)
-        valor = round(extras * preco, 2)
-        estado["fotos_extras"] = extras
-        estado["valor_extra"] = valor
-        valor_str = f"R$ {valor:.2f}".replace(".", ",")
-        unitario_str = f"R$ {preco:.2f}".replace(".", ",")
-        enviar_mensagem(
-            phone,
-            f"Recebemos {recebidas} fotos, mas seu pedido é de {limite}. \U0001f60a\n"
-            f"Ficaram {extras} foto(s) a mais, que custam {valor_str} no total "
-            f"({unitario_str} cada).\n\nDeseja comprar as {extras} foto(s) extras?"
-        )
-        estado["status"] = "aguardando_resposta_extras"
-        cancelar_timer(phone)
+        if status_atual == "aguardando_descarte":
+            # Cliente est\u00e1 deletando fotos — dizer quantas faltam deletar ainda
+            enviar_mensagem(
+                phone,
+                f"Ainda faltam {extras} foto(s) para deletar! Por favor, apague mais {extras} foto(s). \U0001f60a"
+            )
+            iniciar_timer(phone, 300, lambda: reavaliar_apos_delecao(phone))
+        else:
+            # Fluxo normal: oferecer comprar extras
+            preco = PRECOS_EXTRA.get(tipo, 1.00)
+            valor = round(extras * preco, 2)
+            estado["fotos_extras"] = extras
+            estado["valor_extra"] = valor
+            valor_str = f"R$ {valor:.2f}".replace(".", ",")
+            unitario_str = f"R$ {preco:.2f}".replace(".", ",")
+            enviar_mensagem(
+                phone,
+                f"Recebemos {recebidas} fotos, mas seu pedido \u00e9 de {limite}. \U0001f60a\n"
+                f"Ficaram {extras} foto(s) a mais, que custam {valor_str} no total "
+                f"({unitario_str} cada).\n\nDeseja comprar as {extras} foto(s) extras?"
+            )
+            estado["status"] = "aguardando_resposta_extras"
+            cancelar_timer(phone)
 
     elif limite > 0 and recebidas < limite:
-        # Ainda faltam fotos
+        # Deletou fotos demais — pedir para enviar mais
         faltam = limite - recebidas
+        estado["status"] = "aguardando_fotos"
         enviar_mensagem(
             phone,
-            f"Recebemos {recebidas} foto(s), mas seu pedido é de {limite}. \U0001f60a\n"
-            f"Faltam {faltam} foto(s) para completar seu pedido!"
+            f"Ops! Ficamos com {recebidas} foto(s), mas seu pedido \u00e9 de {limite}. \U0001f60a\n"
+            f"Por favor, envie mais {faltam} foto(s) para completar seu pedido!"
         )
+        iniciar_timer(phone, 600, lambda: verificar_inatividade_fotos(phone))
+
 
 def avaliar_conclusao_timer(phone):
-    """Chamado 10s após última foto — confirma se ainda está em aguardando_fotos e conclui."""
+    """Chamado 10s apÃ³s Ãºltima foto â confirma se ainda estÃ¡ em aguardando_fotos e conclui."""
     estado = get_estado(phone)
     if estado["status"] == "aguardando_fotos":
         avaliar_conclusao(phone)
@@ -945,7 +957,7 @@ def avaliar_conclusao(phone):
     if estado.get("multi_produto"):
         produtos = estado["produtos"]
         resumo = " e ".join(f"{p['limite']} fotos {p['tipo']}" for p in produtos)
-        enviar_mensagem(phone, f"Perfeito, {resumo}! ✅")
+        enviar_mensagem(phone, f"Perfeito, {resumo}! â")
         enviar_mensagem(phone, MSG_FINALIZAR)
         estado["status"] = "concluido"
         cancelar_timer(phone)
@@ -972,7 +984,7 @@ def avaliar_conclusao(phone):
         unitario_str = f"R$ {preco:.2f}".replace(".", ",")
         enviar_mensagem(
             phone,
-            f"Recebemos {recebidas} fotos, mas seu pedido é de {limite}. \U0001f60a\n"
+            f"Recebemos {recebidas} fotos, mas seu pedido Ã© de {limite}. \U0001f60a\n"
             f"Ficaram {extras} foto(s) a mais, que custam {valor_str} no total "
             f"({unitario_str} cada).\n\n"
             f"Deseja comprar as {extras} foto(s) extras?"
@@ -981,10 +993,10 @@ def avaliar_conclusao(phone):
         cancelar_timer(phone)
 
     elif recebidas < limite:
-        pass  # timer de inatividade já rodando
+        pass  # timer de inatividade jÃ¡ rodando
 
 def _vincular_background(phone, numero_pedido, estado, is_multi):
-    """Operações pesadas de Sheets em background após vincular pedido."""
+    """OperaÃ§Ãµes pesadas de Sheets em background apÃ³s vincular pedido."""
     try:
         atualizar_telefone_na_planilha(numero_pedido, phone)
         nome_cliente = estado.get("nome_cliente", "")
@@ -1011,7 +1023,7 @@ def _vincular_background(phone, numero_pedido, estado, is_multi):
 def vincular_pedido(phone, numero_pedido):
     dados = buscar_pedido_na_planilha(numero_pedido)
     if not dados:
-        print(f"[Ana] Pedido {numero_pedido} não encontrado na planilha")
+        print(f"[Ana] Pedido {numero_pedido} nÃ£o encontrado na planilha")
         return False
 
     estado = get_estado(phone)
@@ -1020,7 +1032,7 @@ def vincular_pedido(phone, numero_pedido):
     tipo = identificar_tipo(produto, sku)
     limite = extrair_limite_fotos(sku)
 
-    # ── Reset COMPLETO dos contadores ao trocar de pedido ──────────────────
+    # ââ Reset COMPLETO dos contadores ao trocar de pedido ââââââââââââââââââ
     estado["pedido"] = numero_pedido
     estado["produto"] = produto
     estado["sku"] = sku
@@ -1035,7 +1047,7 @@ def vincular_pedido(phone, numero_pedido):
 
     telefone_pedido[phone] = numero_pedido
 
-    # ── Detecta multi-produto ────────────────────────────────────────────────
+    # ââ Detecta multi-produto ââââââââââââââââââââââââââââââââââââââââââââââââ
     produtos_parsed = parse_sku_produtos(sku)
     is_multi = len(produtos_parsed) > 1
     if is_multi:
@@ -1046,16 +1058,16 @@ def vincular_pedido(phone, numero_pedido):
         print(f"[Ana] Pedido {numero_pedido} multi-produto: {[p['tipo'] for p in produtos_parsed]}")
         enviar_mensagem(
             phone,
-            f"Pedido identificado com sucesso! 😊\n{msg_orientacao_multiproduto(produtos_parsed)}"
+            f"Pedido identificado com sucesso! ð\n{msg_orientacao_multiproduto(produtos_parsed)}"
         )
     elif limite > 0:
-        enviar_mensagem(phone, f"Pedido identificado com sucesso! 😊 Agora é só enviar suas {limite} fotos para darmos continuidade ao seu pedido.")
+        enviar_mensagem(phone, f"Pedido identificado com sucesso! ð Agora Ã© sÃ³ enviar suas {limite} fotos para darmos continuidade ao seu pedido.")
     else:
-        enviar_mensagem(phone, f"Pedido identificado com sucesso! 😊 Pode enviar suas fotos para darmos continuidade ao seu pedido.")
+        enviar_mensagem(phone, f"Pedido identificado com sucesso! ð Pode enviar suas fotos para darmos continuidade ao seu pedido.")
 
     print(f"[Ana] Pedido {numero_pedido} vinculado: limite={estado['limite_fotos']} tipo={tipo}")
 
-    # ── Sheets em background — resposta já foi enviada acima ────────────────
+    # ââ Sheets em background â resposta jÃ¡ foi enviada acima ââââââââââââââââ
     threading.Thread(
         target=_vincular_background,
         args=(phone, numero_pedido, estado, is_multi),
@@ -1074,7 +1086,7 @@ def _salvar_imagem_em_background(phone, image_url, pedido, tipo_img, subpasta=""
 def processar_imagem_recebida(phone, image_url):
     estado = get_estado(phone)
     if estado["status"] == "concluido":
-        print(f"[Ana] Pedido concluído — imagem de {phone} ignorada")
+        print(f"[Ana] Pedido concluÃ­do â imagem de {phone} ignorada")
         return
 
     pedido = estado.get("pedido", "")
@@ -1086,15 +1098,15 @@ def processar_imagem_recebida(phone, image_url):
     elif pedido:
         tipo_img = identificar_tipo(estado.get("produto", ""), estado.get("sku", ""))
 
-    # ── Upload em background — não bloqueia o timer ────────────────────────
-    estado["ultima_imagem_url"] = image_url  # guarda para cenário de cópias
+    # ââ Upload em background â nÃ£o bloqueia o timer ââââââââââââââââââââââââ
+    estado["ultima_imagem_url"] = image_url  # guarda para cenÃ¡rio de cÃ³pias
     threading.Thread(
         target=_salvar_imagem_em_background,
         args=(phone, image_url, pedido, tipo_img),
         daemon=True
     ).start()
 
-    # ── Incrementa contador e reinicia timer IMEDIATAMENTE ─────────────────
+    # ââ Incrementa contador e reinicia timer IMEDIATAMENTE âââââââââââââââââ
     if pedido:
         if estado.get("multi_produto"):
             _processar_imagem_multiproduto(phone)
@@ -1111,22 +1123,22 @@ def processar_imagem_recebida(phone, image_url):
         estado["imgs_antes_pedido"] += 1
         estado["status"] = "aguardando_pedido"
         iniciar_timer(phone, 30, lambda: pedir_numero_pedido_timer(phone))
-        print(f"[Ana] {phone}: imagem sem pedido ({estado['imgs_antes_pedido']}ª)")
+        print(f"[Ana] {phone}: imagem sem pedido ({estado['imgs_antes_pedido']}Âª)")
 def processar_texto_recebido(phone, body):
     estado = get_estado(phone)
     status = estado["status"]
     body_low = body.lower().strip()
 
 
-    # ── Tenta extrair nome do cliente se ainda não temos ─────────
+    # ââ Tenta extrair nome do cliente se ainda nÃ£o temos âââââââââ
     if not estado.get("nome_cliente"):
         nome_extraido = tentar_extrair_nome(body)
         if nome_extraido:
             estado["nome_cliente"] = nome_extraido
             salvar_ou_atualizar_cliente(phone, nome=nome_extraido)
-            print(f"[Ana] Nome extraído para {phone}: {nome_extraido}")
+            print(f"[Ana] Nome extraÃ­do para {phone}: {nome_extraido}")
 
-    # ── Multi-produto: detecta rótulo de dimensão ─────────────────
+    # ââ Multi-produto: detecta rÃ³tulo de dimensÃ£o âââââââââââââââââ
     if estado.get("multi_produto") and status == "aguardando_fotos":
         tipo_det = _detectar_tipo_na_mensagem(body)
         if tipo_det:
@@ -1134,7 +1146,7 @@ def processar_texto_recebido(phone, body):
                 if p["tipo"] == tipo_det and not p["concluido"]:
                     estado["produto_ativo_idx"] = i
                     cancelar_timer(phone)
-                    print(f"[Ana] Multi {phone}: dimensão '{tipo_det}' ativa")
+                    print(f"[Ana] Multi {phone}: dimensÃ£o '{tipo_det}' ativa")
                     buf = estado["imgs_antes_pedido"]
                     if buf > 0:
                         estado["imgs_antes_pedido"] = 0
@@ -1148,19 +1160,19 @@ def processar_texto_recebido(phone, body):
                                 prox = next((pp for pp in estado["produtos"] if not pp["concluido"]), None)
                                 if prox:
                                     estado["produto_ativo_idx"] = estado["produtos"].index(prox)
-                                    enviar_mensagem(phone, f"✅ {p['limite']} fotos {p['tipo']} recebidas! Agora envie as {prox['limite']} fotos {prox['tipo']}.")
+                                    enviar_mensagem(phone, f"â {p['limite']} fotos {p['tipo']} recebidas! Agora envie as {prox['limite']} fotos {prox['tipo']}.")
                         elif buf > 0:
                             iniciar_timer(phone, 600, lambda: _verificar_inatividade_multiproduto(phone))
                     return
             return
 
-    # ── Resposta sobre fotos extras ───────────────────────────────
+    # ââ Resposta sobre fotos extras âââââââââââââââââââââââââââââââ
     if status == "aguardando_confirmacao_copias":
         limite = estado["limite_fotos"]
         tipo = identificar_tipo(estado["produto"], estado["sku"])
         pedido_num = estado.get("pedido", "")
         if any(p in body_low for p in ["sim", "yes", "s", "isso", "correto", "exato", "pode"]):
-            subpasta = f"{limite} cópias"
+            subpasta = f"{limite} cÃ³pias"
             img_url = estado.get("ultima_imagem_url", "")
             if img_url:
                 threading.Thread(
@@ -1168,14 +1180,14 @@ def processar_texto_recebido(phone, body):
                     args=(phone, img_url, pedido_num, tipo, subpasta),
                     daemon=True
                 ).start()
-            enviar_mensagem(phone, f"Perfeito! Serão {limite} cópias dessa foto. ✅")
+            enviar_mensagem(phone, f"Perfeito! SerÃ£o {limite} cÃ³pias dessa foto. â")
             enviar_mensagem(phone, MSG_FINALIZAR)
             estado["status"] = "concluido"
             cancelar_timer(phone)
-        elif any(p in body_low for p in ["não", "nao", "nã", "no", "n", "vou", "outras", "mais"]):
+        elif any(p in body_low for p in ["nÃ£o", "nao", "nÃ£", "no", "n", "vou", "outras", "mais"]):
             faltam = limite - estado["fotos_recebidas"]
             estado["status"] = "aguardando_fotos"
-            enviar_mensagem(phone, f"Ok! Pode continuar enviando. Faltam {faltam} foto(s)! 😊")
+            enviar_mensagem(phone, f"Ok! Pode continuar enviando. Faltam {faltam} foto(s)! ð")
             iniciar_timer(phone, 600, lambda: verificar_inatividade_fotos(phone))
         return
 
@@ -1186,11 +1198,11 @@ def processar_texto_recebido(phone, body):
             tipo = identificar_tipo(estado["produto"], estado["sku"])
             enviar_mensagem(
                 phone,
-                f"O valor das {extras} foto(s) a mais é de R$ {valor:.2f}.\n{MSG_PIX}"
+                f"O valor das {extras} foto(s) a mais Ã© de R$ {valor:.2f}.\n{MSG_PIX}"
             )
             estado["status"] = "aguardando_pagamento"
 
-        elif any(p in body_low for p in ["não", "nao", "nã", "no", "n"]):
+        elif any(p in body_low for p in ["nÃ£o", "nao", "nÃ£", "no", "n"]):
             limite = estado["limite_fotos"]
             enviar_mensagem(
                 phone,
@@ -1200,32 +1212,32 @@ def processar_texto_recebido(phone, body):
             estado["status"] = "aguardando_descarte"
         return
 
-    # ── Cliente quer enviar menos fotos do que o pedido ──────────
+    # ââ Cliente quer enviar menos fotos do que o pedido ââââââââââ
     if status in ("aguardando_fotos", "aguardando_pedido"):
-        m_menos = re.search(r's[oó] (\d+)\s*(?:fotos?)?', body_low)
-        if m_menos and any(p in body_low for p in ["só", "so", "apenas", "somente"]):
+        m_menos = re.search(r's[oÃ³] (\d+)\s*(?:fotos?)?', body_low)
+        if m_menos and any(p in body_low for p in ["sÃ³", "so", "apenas", "somente"]):
             qtd_quero = int(m_menos.group(1))
             limite = estado.get("limite_fotos", 0)
             if limite > 0 and qtd_quero < limite:
                 enviar_mensagem(
                     phone,
-                    f"Sem problema! Podemos fazer só as {qtd_quero} fotos mesmo. 😊 "
+                    f"Sem problema! Podemos fazer sÃ³ as {qtd_quero} fotos mesmo. ð "
                     f"Pode continuar enviando!"
                 )
                 estado["limite_fotos"] = qtd_quero
                 return
 
-    # ── Comprovante de pagamento (texto) — ignorado ──────────────
+    # ââ Comprovante de pagamento (texto) â ignorado ââââââââââââââ
     if status == "aguardando_pagamento":
         return
 
-    # ── Detecta link do Google Drive ─────────────────────────────
+    # ââ Detecta link do Google Drive âââââââââââââââââââââââââââââ
     drive_id = extrair_id_drive(body)
     if drive_id:
         print(f"[Ana] Link Google Drive detectado de {phone}: {drive_id}")
         enviar_mensagem(
             phone,
-            "📎 Recebi o link do Google Drive! Estou baixando suas fotos, aguarde um momento... 🔄"
+            "ð Recebi o link do Google Drive! Estou baixando suas fotos, aguarde um momento... ð"
         )
         threading.Thread(
             target=processar_pasta_drive,
@@ -1234,7 +1246,7 @@ def processar_texto_recebido(phone, body):
         ).start()
         return
 
-    # ── Tenta extrair número do pedido ───────────────────────────
+    # ââ Tenta extrair nÃºmero do pedido âââââââââââââââââââââââââââ
     numero = extrair_numero_pedido(body)
     if numero and pedido_existe(numero):
         cancelar_timer(phone)
@@ -1242,23 +1254,23 @@ def processar_texto_recebido(phone, body):
         print(f"[Webhook] Pedido {numero} vinculado ao telefone {phone}")
         return
 
-    # ── Cálculo de preço: ex. "quanto daria 37 fotos imã" ────────
+    # ââ CÃ¡lculo de preÃ§o: ex. "quanto daria 37 fotos imÃ£" ââââââââ
     resposta_calc = calcular_preco(body_low)
     if resposta_calc:
         enviar_mensagem(phone, resposta_calc)
-        print(f"[Ana] Cálculo respondido para {phone}: {body[:60]}")
+        print(f"[Ana] CÃ¡lculo respondido para {phone}: {body[:60]}")
         return
 
-    # ── FAQ: responde perguntas frequentes ────────────────────────
+    # ââ FAQ: responde perguntas frequentes ââââââââââââââââââââââââ
     resposta_faq = verificar_faq(body_low)
     if resposta_faq:
         enviar_mensagem(phone, resposta_faq)
         print(f"[Ana] FAQ respondido para {phone}: {body[:60]}")
         return
 
-    print(f"[Ana] Texto não reconhecido de {phone}: {body[:60]}")
+    print(f"[Ana] Texto nÃ£o reconhecido de {phone}: {body[:60]}")
 
-# ── Extração do número de pedido ─────────────────────────────
+# ââ ExtraÃ§Ã£o do nÃºmero de pedido âââââââââââââââââââââââââââââ
 def extrair_numero_pedido(texto):
     candidatos = PEDIDO_REGEX.findall(texto.upper())
     for c in candidatos:
@@ -1266,7 +1278,7 @@ def extrair_numero_pedido(texto):
             return c
     return candidatos[0] if candidatos else None
 
-# ── Thread IMAP — monitora Gmail ─────────────────────────────
+# ââ Thread IMAP â monitora Gmail âââââââââââââââââââââââââââââ
 pedidos_processados = set()
 
 def extrair_corpo_email(msg):
@@ -1343,7 +1355,7 @@ def verificar_gmail():
 
                     m_prod = re.search(
                         r'ID do pedido:\s*#?' + re.escape(numero) +
-                        r'[\s\S]{0,50}?([A-Za-zÀ-ú][^\n\t]{10,})',
+                        r'[\s\S]{0,50}?([A-Za-zÃ-Ãº][^\n\t]{10,})',
                         corpo, re.IGNORECASE
                     )
                     if m_prod:
@@ -1353,25 +1365,25 @@ def verificar_gmail():
                     if m_qtd:
                         quantidade = m_qtd.group(1).strip()
 
-                    # 1) Extrai variação/SKU do email
-                    m_sku = re.search(r'Varia[ção]{2,4}[:\s]+([^\n\t<]{3,80})', corpo, re.IGNORECASE)
+                    # 1) Extrai variaÃ§Ã£o/SKU do email
+                    m_sku = re.search(r'Varia[Ã§Ã£o]{2,4}[:\s]+([^\n\t<]{3,80})', corpo, re.IGNORECASE)
                     if not m_sku:
                         m_sku = re.search(r'SKU[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
                     if m_sku:
-                        # 1) Remove tudo a partir de '[' ou '(' (códigos internos Shopee)
+                        # 1) Remove tudo a partir de '[' ou '(' (cÃ³digos internos Shopee)
                         sku_raw = re.split(r'[\[\(]', m_sku.group(1).strip())[0].strip()
-                        # 2) Remove prefixos numéricos longos da Shopee (ex: "21499081161-" ou "7171 ")
-                        #    Formato: {código 4+ dígitos}{hífen} → remove o código e o hífen
+                        # 2) Remove prefixos numÃ©ricos longos da Shopee (ex: "21499081161-" ou "7171 ")
+                        #    Formato: {cÃ³digo 4+ dÃ­gitos}{hÃ­fen} â remove o cÃ³digo e o hÃ­fen
                         sku_raw = re.sub(r'\d{4,}-', '', sku_raw)
-                        #    Formato: {código 4+ dígitos}{espaço} no início → remove
+                        #    Formato: {cÃ³digo 4+ dÃ­gitos}{espaÃ§o} no inÃ­cio â remove
                         sku_raw = re.sub(r'^\d{4,}\s*', '', sku_raw).strip()
-                        # 3) Limpa espaços extras
+                        # 3) Limpa espaÃ§os extras
                         sku_raw = re.sub(r'\s+', ' ', sku_raw).strip()
                         sku = sku_raw
 
-                    # 2) Se SKU tem só quantidade sem dimensão, tenta extrair dimensão do produto
+                    # 2) Se SKU tem sÃ³ quantidade sem dimensÃ£o, tenta extrair dimensÃ£o do produto
                     if sku and not any(k in sku.upper() for k in
-                                       ["10X15","15X21","IMA","IMÃ","POLAROID","MINI","A4"]):
+                                       ["10X15","15X21","IMA","IMÃ","POLAROID","MINI","A4"]):
                         tipo_prod = identificar_tipo(produto, "")
                         if tipo_prod != "10X15" or "10X15" in produto.upper() or "10 X 15" in produto.upper():
                             m_qtd_sku = re.search(r'(\d+)', sku)
@@ -1380,22 +1392,22 @@ def verificar_gmail():
 
                     # 3) Fallback: tenta extrair do produto
                     if not sku:
-                        m_kit = re.search(r'(KIT\s+(?:AT[EÉ]\s+)?\d+\s+FOTOS?)', corpo, re.IGNORECASE)
+                        m_kit = re.search(r'(KIT\s+(?:AT[EÃ]\s+)?\d+\s+FOTOS?)', corpo, re.IGNORECASE)
                         if m_kit:
                             sku = m_kit.group(1).strip().upper()
                             m_num = re.search(r'(\d+)\s*FOTO', sku.upper())
                             if m_num:
                                 sku = m_num.group(1) + ' fotos'
 
-                    # 4) Multi-produto: só via '+' já presente no SKU extraído
-                    #    NÃO varre corpo do email (contém anúncios de outros produtos)
+                    # 4) Multi-produto: sÃ³ via '+' jÃ¡ presente no SKU extraÃ­do
+                    #    NÃO varre corpo do email (contÃ©m anÃºncios de outros produtos)
                     if '+' in sku:
-                        pass  # parse_sku_produtos cuidará disso em vincular_pedido
+                        pass  # parse_sku_produtos cuidarÃ¡ disso em vincular_pedido
 
                     mc = re.search(r'Envie o pedido para ([^\.\n,]+)', corpo)
                     if mc:
                         cliente = mc.group(1).strip()
-                    mp = re.search(r'(At[eé] \d+ de \w+)', corpo, re.IGNORECASE)
+                    mp = re.search(r'(At[eÃ©] \d+ de \w+)', corpo, re.IGNORECASE)
                     if mp:
                         prazo = mp.group(1).strip()
 
@@ -1427,7 +1439,7 @@ def thread_gmail():
         verificar_gmail()
         time.sleep(60)
 
-# ── Webhook WhatsApp ──────────────────────────────────────────
+# ââ Webhook WhatsApp ââââââââââââââââââââââââââââââââââââââââââ
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp():
     try:
@@ -1462,8 +1474,8 @@ def whatsapp():
 
         body = extrair_texto(data)
 
-        # ── Detecta mensagem deletada/revogada pelo cliente ───────
-        # Z-API pode usar vários campos diferentes para indicar deleção
+        # ââ Detecta mensagem deletada/revogada pelo cliente âââââââ
+        # Z-API pode usar vÃ¡rios campos diferentes para indicar deleÃ§Ã£o
         tipo_lower = str(msg_type).lower()
         is_deleted = (
             data.get("isRevoked") is True
@@ -1478,13 +1490,13 @@ def whatsapp():
         if is_deleted:
             print(f"[Ana] Mensagem deletada detectada de {phone} (type={msg_type})")
             estado = get_estado(phone)
-            if estado["status"] == "aguardando_fotos" and estado["fotos_recebidas"] > 0:
+            if estado["status"] in ("aguardando_fotos", "aguardando_descarte") and estado["fotos_recebidas"] > 0:
                 estado["fotos_recebidas"] = max(0, estado["fotos_recebidas"] - 1)
                 print(f"[Ana] Foto deletada: agora {estado['fotos_recebidas']}/{estado['limite_fotos']}")
-                iniciar_timer(phone, 10, lambda: reavaliar_apos_delecao(phone))
+                iniciar_timer(phone, 30, lambda: reavaliar_apos_delecao(phone))
             return "ok", 200
 
-        # ── Detecta imagem enviada como documento ─────────────────
+        # ââ Detecta imagem enviada como documento âââââââââââââââââ
         tem_documento_imagem = False
         if msg_type in ("document", "documentMessage"):
             doc = data.get("document") or {}
@@ -1514,13 +1526,13 @@ def whatsapp():
 
         print(f"[Webhook] phone={phone} tipo={msg_type} imagem={tem_imagem} doc_img={tem_documento_imagem} body={str(body)[:60]}")
 
-     # ── Saudação automática (primeiro contato) ────────────────────────────
+     # ââ SaudaÃ§Ã£o automÃ¡tica (primeiro contato) ââââââââââââââââââââââââââââ
         estado = get_estado(phone)
         if estado["status"] == "novo":
-            # Sem conteúdo real (deletado, sistema, etc.) → ignora silenciosamente
+            # Sem conteÃºdo real (deletado, sistema, etc.) â ignora silenciosamente
             body_vazio = not body or not body.strip()
             if body_vazio and not tem_imagem:
-                print(f"[Ana] Webhook sem conteúdo de {phone} ignorado (tipo={msg_type})")
+                print(f"[Ana] Webhook sem conteÃºdo de {phone} ignorado (tipo={msg_type})")
                 return "ok", 200
 
             historico = carregar_cliente(phone)
@@ -1533,7 +1545,7 @@ def whatsapp():
 
                 ultimo = historico.get("ultimo_pedido", "")
                 if ultimo:
-                    # Restaura pedido silenciosamente (reinício do servidor)
+                    # Restaura pedido silenciosamente (reinÃ­cio do servidor)
                     dados_ped = buscar_pedido_na_planilha(ultimo)
                     if dados_ped:
                         estado["produto"] = dados_ped.get("produto", "")
@@ -1543,9 +1555,9 @@ def whatsapp():
                     estado["fotos_recebidas"] = fotos_ja
                     estado["pedido"] = ultimo
                     estado["status"] = "aguardando_fotos"
-                    print(f"[Ana] Reinício: restaurando pedido {ultimo} ({fotos_ja} fotos) para {phone}")
+                    print(f"[Ana] ReinÃ­cio: restaurando pedido {ultimo} ({fotos_ja} fotos) para {phone}")
                 else:
-                    # Cliente com pedidos anteriores mas sem pedido ativo — saudação de retorno
+                    # Cliente com pedidos anteriores mas sem pedido ativo â saudaÃ§Ã£o de retorno
                     nome_part = f", {nome}" if nome else ""
                     saudacao = MSG_SAUDACAO_RETORNO.format(nome_part=nome_part)
                     enviar_mensagem(phone, saudacao)
@@ -1553,11 +1565,11 @@ def whatsapp():
                     print(f"[Ana] Cliente recorrente sem pedido ativo: {phone}")
 
             elif historico:
-                # Ja foi saudado antes (reinicio do servidor) — nao repete saudacao
+                # Ja foi saudado antes (reinicio do servidor) â nao repete saudacao
                 estado["status"] = "aguardando_pedido"
                 if historico.get("nome"):
                     estado["nome_cliente"] = historico["nome"]
-                print(f"[Ana] Cliente ja saudado: {phone} — sem saudacao")
+                print(f"[Ana] Cliente ja saudado: {phone} â sem saudacao")
 
             else:
                 # Primeiro contato de verdade
@@ -1569,7 +1581,7 @@ def whatsapp():
                 body_faq = body if (body and not body.startswith("http")) else ""
                 faq_inicial = verificar_faq(body_faq.lower().strip()) if body_faq else None
                 if faq_inicial:
-                    msg_combinada = ("Olá, seja bem-vindo à Personalizei! Obrigado pela sua compra. 😊" "\n\n" + faq_inicial)
+                    msg_combinada = ("OlÃ¡, seja bem-vindo Ã  Personalizei! Obrigado pela sua compra. ð" "\n\n" + faq_inicial)
                     enviar_mensagem(phone, msg_combinada)
                     estado["status"] = "aguardando_pedido"
                     return "ok", 200
@@ -1577,11 +1589,11 @@ def whatsapp():
                     enviar_mensagem(phone, MSG_SAUDACAO)
                 estado["status"] = "aguardando_pedido"
 
-        # ── Processa imagem ───────────────────────────────────────
+        # ââ Processa imagem âââââââââââââââââââââââââââââââââââââââ
         if tem_imagem and image_url:
             processar_imagem_recebida(phone, image_url)
 
-        # ── Processa texto ────────────────────────────────────────
+        # ââ Processa texto ââââââââââââââââââââââââââââââââââââââââ
         elif body and not body.startswith("http"):
             processar_texto_recebido(phone, body)
 
