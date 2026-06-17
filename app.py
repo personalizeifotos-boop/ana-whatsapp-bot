@@ -327,7 +327,7 @@ def identificar_tipo(produto, sku):
     return "10X15"
 
 def extrair_limite_fotos(sku):
-    m = re.search(r'(\d{1,3})\s*fotos?', sku, re.IGNORECASE)
+    m = re.search(r'(\d{2,3})\s*fotos?', sku, re.IGNORECASE)
     return int(m.group(1)) if m else 0
 
 def parse_sku_produtos(sku):
@@ -1382,6 +1382,8 @@ def verificar_gmail():
                         sku_raw = re.sub(r'^\d{4,}\s*', '', sku_raw).strip()
                         # 3) Limpa espaÃ§os extras
                         sku_raw = re.sub(r'\s+', ' ', sku_raw).strip()
+                        # Remove "1 " inicial (qtd de unidade Shopee, nao de fotos)
+                        sku_raw = re.sub(r'^1\s+', '', sku_raw)
                         sku = sku_raw
 
                     # 2) Se SKU tem sÃ³ quantidade sem dimensÃ£o, tenta extrair dimensÃ£o do produto
@@ -1417,6 +1419,11 @@ def verificar_gmail():
                     limite_sku = extrair_limite_fotos(sku)
                     if limite_sku > 0:
                         quantidade = str(limite_sku)
+                    else:
+                        # Tenta extrair qtd do nome do produto (ex: "KIT 50 FOTOS")
+                        m_q_prod = re.search(r'(\d{2,3})\s*fotos?', produto, re.IGNORECASE)
+                        if m_q_prod:
+                            quantidade = m_q_prod.group(1)
 
                     salvar_pedido(
                         numero_pedido=numero, produto=produto,
