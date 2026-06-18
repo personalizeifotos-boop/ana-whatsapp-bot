@@ -1416,14 +1416,21 @@ def verificar_gmail():
                     if mp:
                         prazo = mp.group(1).strip()
         # Quantidade real vem do SKU (email sempre marca Quantidade=1 unidade)
-                    limite_sku = extrair_limite_fotos(sku)
-                    if limite_sku > 0:
-                        quantidade = str(limite_sku)
+                    # Quantidade e SKU: extrai do nome do produto (numero antes de "FOTOS")
+                    # Ex: "KIT 50 FOTOS 10X15" -> quantidade=50, tipo="10X15"
+                    m_qty = re.search(r'(\d+)\s*fotos?', produto, re.IGNORECASE)
+                    if m_qty:
+                        quantidade = m_qty.group(1)
+                        # Tipo/dimensao vem do campo de variacao (ex: "fotos 10X15" -> "10X15")
+                        tipo_var = re.sub(r'^\d+\s*fotos?\s*', '', sku, flags=re.IGNORECASE).strip()
+                        if not tipo_var:
+                            tipo_var = re.sub(r'^fotos?\s*', '', sku, flags=re.IGNORECASE).strip()
+                        sku = f"{quantidade} fotos {tipo_var}" if tipo_var else f"{quantidade} fotos"
                     else:
-                        # Tenta extrair qtd do nome do produto (ex: "KIT 50 FOTOS")
-                        m_q_prod = re.search(r'(\d{2,3})\s*fotos?', produto, re.IGNORECASE)
-                        if m_q_prod:
-                            quantidade = m_q_prod.group(1)
+                        # Fallback: extrai do SKU de variacao
+                        limite_sku = extrair_limite_fotos(sku)
+                        if limite_sku > 0:
+                            quantidade = str(limite_sku)
 
                     salvar_pedido(
                         numero_pedido=numero, produto=produto,
