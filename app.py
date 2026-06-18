@@ -1416,21 +1416,46 @@ def verificar_gmail():
                     if mp:
                         prazo = mp.group(1).strip()
         # Quantidade real vem do SKU (email sempre marca Quantidade=1 unidade)
-                    # Quantidade e SKU: extrai do nome do produto (numero antes de "FOTOS")
-                    # Ex: "KIT 50 FOTOS 10X15" -> quantidade=50, tipo="10X15"
-                    m_qty = re.search(r'(\d+)\s*fotos?', produto, re.IGNORECASE)
-                    if m_qty:
-                        quantidade = m_qty.group(1)
-                        # Tipo/dimensao vem do campo de variacao (ex: "fotos 10X15" -> "10X15")
-                        tipo_var = re.sub(r'^\d+\s*fotos?\s*', '', sku, flags=re.IGNORECASE).strip()
-                        if not tipo_var:
-                            tipo_var = re.sub(r'^fotos?\s*', '', sku, flags=re.IGNORECASE).strip()
-                        sku = f"{quantidade} fotos {tipo_var}" if tipo_var else f"{quantidade} fotos"
+                    # === Quantidade e SKU (suporta multi-produto) ===
+                    # Busca TODOS os itens "N fotos TIPO" no corpo do email
+                    _TIPOS_RE = (r'(?:10\s*[xX]\s*15|15\s*[xX]\s*21|20\s*[xX]\s*25'
+                                 r'|[Mm]ini\s*[Ff]otos?|[Pp]olaroid|[Ii]m[a\xe3]|A4)')
+                    _itens_foto = []
+                    _vistos_sku = set()
+                    for _mf in re.finditer(
+                        rf'(\d{{2,4}})\s*[Ff]otos?\s+({_TIPOS_RE})',
+                        corpo, re.IGNORECASE
+                    ):
+                        _q, _t = _mf.group(1), _mf.group(2).strip()
+                        _k = (_q, re.sub(r'\s', '', _t).upper())
+                        if _k not in _vistos_sku:
+                            _vistos_sku.add(_k)
+                            _itens_foto.append((_q, _t))
+
+                    if _itens_foto:
+                        # Monta SKU: "50 fotos 10X15" ou "50 fotos 10X15 + 100 fotos 15X21"
+                        _sku_parts = []
+                        for _q, _t in _itens_foto:
+                            _tipo_fmt = re.sub(r'\s*[xX]\s*', 'X', _t, flags=re.IGNORECASE)
+                            _sku_parts.append(f"{_q} fotos {_tipo_fmt}")
+                        sku = ' + '.join(_sku_parts)
+                        quantidade = _itens_foto[0][0] if len(_itens_foto) == 1 else ''
                     else:
-                        # Fallback: extrai do SKU de variacao
-                        limite_sku = extrair_limite_fotos(sku)
-                        if limite_sku > 0:
-                            quantidade = str(limite_sku)
+                        # Fallback: usa produto + variacao (pedidos sem padrao "N fotos TIPO")
+                        _m_qty = re.search(r'(\d+)\s*fotos?', produto, re.IGNORECASE)
+                        if _m_qty:
+                            quantidade = _m_qty.group(1)
+                            _tipo_var = re.sub(r'^\d+\s*fotos?\s*', '', sku,
+                                               flags=re.IGNORECASE).strip()
+                            if not _tipo_var:
+                                _tipo_var = re.sub(r'^fotos?\s*', '', sku,
+                                                   flags=re.IGNORECASE).strip()
+                            sku = (f"{quantidade} fotos {_tipo_var}"
+                                   if _tipo_var else f"{quantidade} fotos")
+                        else:
+                            _lim = extrair_limite_fotos(sku)
+                            if _lim > 0:
+                                quantidade = str(_lim)
 
                     salvar_pedido(
                         numero_pedido=numero, produto=produto,
