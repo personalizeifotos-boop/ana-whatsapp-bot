@@ -1365,49 +1365,42 @@ def verificar_gmail():
                     if m_qtd:
                         quantidade = m_qtd.group(1).strip()
 
-                    # 1) Extrai variaÃ§Ã£o/SKU do email
-                    m_sku = re.search(r'Varia[Ã§Ã£o]{2,4}[:\s]+([^\n\t<]{3,80})', corpo, re.IGNORECASE)
-                    if not m_sku:
-                        m_sku = re.search(r'SKU[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
+                    # Extração de SKU e quantidade (lógica definitiva)
+                    # Padrão Shopee: "1002 - 20 FOTOS" → 20 fotos
+                    qtds_sku = re.findall(r'\d+\s*-\s*(\d+)\s+FOTOS?', corpo, re.IGNORECASE)
+                    # Dimensões dos produtos: "10x15", "15X21", etc.
+                    dims_raw = re.findall(r'(\d{2,3}[xX]\d{2,3})', corpo)
+                    dims_unique = []
+                    for d in [x.upper() for x in dims_raw]:
+                        if not dims_unique or dims_unique[-1] != d:
+                            dims_unique.append(d)
+
+                    if qtds_sku:
+                        if len(qtds_sku) == len(dims_unique):
+                            partes = [f"{q} fotos {d}" for q, d in zip(qtds_sku, dims_unique)]
+                        elif dims_unique:
+                            partes = [f"{q} fotos {dims_unique[0]}" for q in qtds_sku]
+                        else:
+                            partes = [f"{q} fotos" for q in qtds_sku]
+                        sku = ' + '.join(partes)
+                        quantidade = qtds_sku[0] if len(qtds_sku) == 1 else ''
+                    else:
+                        # Fallback: outros padrões
+                        m_sku = re.search(r'Varia\w+\s*[:\s]+([^\n\t<]{3,80})', corpo, re.IGNORECASE)
                         if not m_sku:
-                            # Shopee multilinha: "SKU\n\n1\n\n1002 - 50 FOTOS"
+                            m_sku = re.search(r'SKU[:\s]+([^\n\t<]{3,60})', corpo, re.IGNORECASE)
+                        if not m_sku:
                             m_sku = re.search(r'SKU\s+\d+\s+([^\n]{3,60})', corpo, re.IGNORECASE)
-                    if m_sku:
-                        # 1) Remove tudo a partir de '[' ou '(' (cÃ³digos internos Shopee)
-                        sku_raw = re.split(r'[\[\(]', m_sku.group(1).strip())[0].strip()
-                        # 2) Remove prefixos numÃ©ricos longos da Shopee (ex: "21499081161-" ou "7171 ")
-                        #    Formato: {cÃ³digo 4+ dÃ­gitos}{hÃ­fen} â remove o cÃ³digo e o hÃ­fen
-                        sku_raw = re.sub(r'\d{4,}-', '', sku_raw)
-                        #    Formato: {cÃ³digo 4+ dÃ­gitos}{espaÃ§o} no inÃ­cio â remove
-                        sku_raw = re.sub(r'^\d{4,}\s*', '', sku_raw).strip()
-                        # 3) Limpa espaÃ§os extras
-                        sku_raw = re.sub(r'\s+', ' ', sku_raw).strip()
-                        # Remove "1 " inicial (qtd de unidade Shopee, nao de fotos)
-                        sku_raw = re.sub(r'^1\s+', '', sku_raw)
-                        sku = sku_raw
-
-                    # 2) Se SKU tem sÃ³ quantidade sem dimensÃ£o, tenta extrair dimensÃ£o do produto
-                    if sku and not any(k in sku.upper() for k in
-                                       ["10X15","15X21","IMA","IMÃ","POLAROID","MINI","A4"]):
-                        tipo_prod = identificar_tipo(produto, "")
-                        if tipo_prod != "10X15" or "10X15" in produto.upper() or "10 X 15" in produto.upper():
-                            m_qtd_sku = re.search(r'(\d+)', sku)
-                            if m_qtd_sku:
-                                sku = f"{m_qtd_sku.group(1)} fotos {tipo_prod}"
-
-                    # 3) Fallback: tenta extrair do produto
-                    if not sku:
-                        m_kit = re.search(r'(KIT\s+(?:AT[EÃ]\s+)?\d+\s+FOTOS?)', corpo, re.IGNORECASE)
-                        if m_kit:
-                            sku = m_kit.group(1).strip().upper()
-                            m_num = re.search(r'(\d+)\s*FOTO', sku.upper())
-                            if m_num:
-                                sku = m_num.group(1) + ' fotos'
-
-                    # 4) Multi-produto: sÃ³ via '+' jÃ¡ presente no SKU extraÃ­do
-                    #    NÃO varre corpo do email (contÃ©m anÃºncios de outros produtos)
-                    if '+' in sku:
-                        pass  # parse_sku_produtos cuidarÃ¡ disso em vincular_pedido
+                        if m_sku:
+                            sku_raw = re.split(r'[\[\(]', m_sku.group(1).strip())[0].strip()
+                            sku_raw = re.sub(r'\d{4,}\s*-?\s*', '', sku_raw).strip()
+                            sku_raw = re.sub(r'\s+', ' ', sku_raw).strip()
+                            sku = sku_raw
+                        else:
+                            m_kit = re.search(r'(KIT\s+(?:AT[EÉ]\s+)?\d+\s+FOTOS?)', corpo, re.IGNORECASE)
+                            if m_kit:
+                                m_num = re.search(r'(\d+)\s*FOTO', m_kit.group(1).upper())
+                                sku = (m_num.group(1) + ' fotos') if m_num else m_kit.group(1).strip()
 
                     mc = re.search(r'Envie o pedido para ([^\.\n,]+)', corpo)
                     if mc:
@@ -1415,29 +1408,6 @@ def verificar_gmail():
                     mp = re.search(r'(At\S*\s+\d+\s+de\s+\w+)', corpo, re.IGNORECASE)
                     if mp:
                         prazo = mp.group(1).strip()
-        # Quantidade real vem do SKU (email sempre marca Quantidade=1 unidade)
-                    # === Quantidade e SKU ===
-                    # Quantidade REAL: numero imediatamente antes de "FOTOS" na linha "Quantidade..."
-                    # Ex: "Quantidade SKU 1 1003 - 30 FOTOS" -> 30
-                    _m_qtd_real = re.search(
-                        r'Quantidade[^\n]*?(\d+)\s*FOTOS?',
-                        corpo, re.IGNORECASE
-                    )
-                    if _m_qtd_real:
-                        quantidade = _m_qtd_real.group(1)
-
-                    # Tipo/dimensao: vem do SKU de variacao (ex: "fotos 10X15" -> "10X15")
-                    _tipo_var = re.sub(r'^\d+\s*fotos?\s*', '', sku,
-                                       flags=re.IGNORECASE).strip()
-                    if not _tipo_var:
-                        _tipo_var = re.sub(r'^fotos?\s*', '', sku,
-                                           flags=re.IGNORECASE).strip()
-
-                    # Monta SKU final: "30 fotos 10X15"
-                    if quantidade and _tipo_var:
-                        sku = f"{quantidade} fotos {_tipo_var}"
-                    elif quantidade and not _tipo_var:
-                        sku = f"{quantidade} fotos"
 
                     salvar_pedido(
                         numero_pedido=numero, produto=produto,
