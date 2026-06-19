@@ -1381,7 +1381,8 @@ def verificar_gmail():
                         elif dims_unique:
                             partes = [f"{q} fotos {dims_unique[0]}" for q in qtds_sku]
                         else:
-                            partes = [f"{q} fotos" for q in qtds_sku]
+                            tipo_nome = identificar_tipo(produto, "")
+                            partes = [f"{q} {tipo_nome}" if tipo_nome != "10X15" else f"{q} fotos" for q in qtds_sku]
                         sku = ' + '.join(partes)
                         quantidade = qtds_sku[0] if len(qtds_sku) == 1 else ''
                     else:
