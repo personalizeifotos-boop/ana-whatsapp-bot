@@ -96,12 +96,13 @@ NOME_PASTA_TIPO = {
     "A4":                       "A4",
     "Cartao de Visita":         "Cartao de Visita",
     "Etiqueta":                 "Etiqueta",
-    "Fotos Retro":              "Fotos RetrÃ´",
-    "Fotos Retro com ima":      "Fotos RetrÃ´ com imÃ£",
+    "Fotos Retro":              "Fotos Retrô",
+    "Fotos Retro com ima":      "Fotos Retrô com imã",
     "Mini Fotos":               "Mini Fotos",
-    "Mini Fotos com ima":       "Mini Fotos com imÃ£",
-    "Mini Fotos Retro":         "Mini Fotos RetrÃ´",
-    "Mini Fotos Retro com ima": "Mini Fotos RetrÃ´ com imÃ£",
+    "Mini Fotos com ima":       "Mini Fotos com imã",
+    "Mini Fotos Retro":         "Mini Fotos Retrô",
+    "Mini Fotos Retro com ima": "Mini Fotos Retrô com imã",
+    "Tags":                     "Tags",
     "Tirinha":                  "Tirinha",
 }
 
