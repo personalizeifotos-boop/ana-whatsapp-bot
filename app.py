@@ -496,6 +496,7 @@ def _upload_imagem_drive(image_url, phone, pedido="", tipo="", subpasta=""):
         ).execute()
         drive_url = f"https://drive.google.com/uc?id={file_id}&export=download"
         print(f"[Drive] â {filename} â {nome_pasta_tipo}/{pedido or '-'} ({len(image_bytes)//1024}KB)")
+        drive_url = f"https://drive.google.com/file/d/{file_id}/view"
         return drive_url
     except Exception as e:
         print(f"[Drive] Erro: {e}")
