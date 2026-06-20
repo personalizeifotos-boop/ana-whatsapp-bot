@@ -5,7 +5,7 @@ import imaplib
 import email
 import threading
 import time
-import urllib.request as _url_reqh
+import urllib.request as _url_req
 import gspread
 import pytz
 from datetime import datetime
