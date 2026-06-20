@@ -413,23 +413,27 @@ def enviar_mensagem(phone, mensagem):
 _drive_folder_cache = {}  # (nome, parent_id) â folder_id
 
 def _drive_service():
-    """Retorna service do Drive usando a mesma service account das Sheets."""
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-    if not creds_json:
-        print("[Drive] GOOGLE_CREDENTIALS_JSON nÃ£o configurado.")
+    """Retorna o servico do Drive usando OAuth2 pessoal (conta personalizei.fotos@gmail.com)."""
+    client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+    client_secret = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+    refresh_token = os.environ.get("GOOGLE_OAUTH_REFRESH_TOKEN")
+    if not all([client_id, client_secret, refresh_token]):
+        print("[Drive] Credenciais OAuth2 nao configuradas.")
         return None
     try:
-        from google.oauth2.service_account import Credentials as _SACredentials
-        creds_data = json.loads(creds_json)
-        creds = _SACredentials.from_service_account_info(
-            creds_data,
+        from google.oauth2.credentials import Credentials
+        creds = Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=client_id,
+            client_secret=client_secret,
             scopes=["https://www.googleapis.com/auth/drive"]
         )
         return build("drive", "v3", credentials=creds)
     except Exception as e:
-        print(f"[Drive] Erro ao criar serviÃ§o: {e}")
+        print(f"[Drive] Erro ao criar servico OAuth2: {e}")
         return None
-
 def get_or_create_drive_folder(service, nome, parent_id):
     """Retorna o ID de uma pasta, criando se nÃ£o existir. Usa cache."""
     cache_key = (nome, parent_id)
