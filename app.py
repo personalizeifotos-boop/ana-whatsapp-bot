@@ -5,7 +5,7 @@ import imaplib
 import email
 import threading
 import time
-import urllib.request as _url_req
+import urllib.request as _url_reqh
 import gspread
 import pytz
 from datetime import datetime
@@ -1097,9 +1097,19 @@ def _salvar_imagem_em_background(phone, image_url, pedido, tipo_img, subpasta=""
 def processar_imagem_recebida(phone, image_url):
     estado = get_estado(phone)
     if estado["status"] == "concluido":
-        print(f"[Ana] Pedido concluÃ­do â imagem de {phone} ignorada")
+        # Cliente recorrente: salva foto e pede numero do pedido
+        print(f"[Ana] Cliente {phone} recorrente - salvando foto e pedindo novo pedido")
+        estado["status"] = "aguardando_pedido"
+        estado["pedido"] = ""
+        estado["fotos_recebidas"] = 0
+        estado["imgs_antes_pedido"] = 1
+        drive_url = _upload_imagem_drive(image_url, phone, pedido="", tipo="")
+        salvar_imagem_pendente(phone, drive_url, "", "")
+        nome_part = f" {estado.get('nome_cliente', '')}".rstrip()
+        enviar_mensagem(phone, MSG_SAUDACAO_RETORNO.format(nome_part=nome_part))
+        iniciar_timer(phone, 30, lambda: pedir_numero_pedido_timer(phone))
         return
-
+    
     pedido = estado.get("pedido", "")
     tipo_img = ""
     if estado.get("multi_produto"):
