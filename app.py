@@ -114,6 +114,8 @@ MAPEAMENTO_TIPO = [
     ("MINI RETRO IMA",      "Mini Fotos Retro com ima"),
     ("MINI IMA RETRO",      "Mini Fotos Retro com ima"),
     ("MINI RETRO",          "Mini Fotos Retro"),
+    ("MINI FOTOS COM IMA",  "Mini Fotos com ima"),
+    ("MINI FOTO COM IMA",   "Mini Fotos com ima"),
     ("MINI IMA",            "Mini Fotos com ima"),
     ("MINI FOTO",           "Mini Fotos"),
     ("MINI FOTOS",          "Mini Fotos"),
