@@ -5,6 +5,7 @@ import imaplib
 import email
 import threading
 import time
+import unicodedata
 import urllib.request as _url_req
 import gspread
 import pytz
@@ -323,10 +324,11 @@ def get_estado(phone):
 
 def identificar_tipo(produto, sku):
     texto = (produto + " " + sku).upper()
-    for orig, sub in [("Ã","A"),("Ã","A"),("Ã","A"),("Ã","A"),("Ã","E"),
-                      ("Ã","E"),("Ã","I"),("Ã","O"),("Ã","O"),("Ã","O"),
-                      ("Ã","U"),("Ã","C")]:
-        texto = texto.replace(orig, sub)
+    # Remove acentos de forma robusta (unicodedata resolve problema de encoding)
+    texto = ''.join(
+        c for c in unicodedata.normalize('NFKD', texto)
+        if unicodedata.category(c) != 'Mn'
+    )
     for chave, tipo in MAPEAMENTO_TIPO:
         if chave in texto:
             return tipo
