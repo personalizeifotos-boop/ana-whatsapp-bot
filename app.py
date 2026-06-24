@@ -1477,6 +1477,12 @@ def whatsapp():
         if not phone:
             return "ok", 200
 
+        # Ignora eventos onde phone é o próprio número da instância Z-API (connectedPhone)
+        connected = re.sub(r'\D', '', str(data.get("connectedPhone", "")))
+        if connected and re.sub(r'\D', '', phone)[-11:] == connected[-11:]:
+            print(f"[Webhook] Ignorando evento phone proprio ({phone})")
+            return "ok", 200
+
         msg_type = data.get("type") or data.get("tipo") or ""
 
         def extrair_texto(d):
