@@ -5,7 +5,7 @@ import imaplib
 import email
 import threading
 import time
-import unicodedata
+import unicodedatah
 import urllib.request as _url_req
 import gspread
 import pytz
@@ -402,10 +402,10 @@ def enviar_mensagem(phone, mensagem):
         return False
     phone_num = re.sub(r'\D', '', phone)
     url = f"{ZAPI_BASE_URL}/send-text"
-    payload = json.dumps({"phone": phone_num, "message": mensagem}).encode()
+    payload = json.dumps({"phone": phone_num, "message": mensagem}, ensure_ascii=False).encode("utf-8")
     req = _url_req.Request(url, data=payload,
                            headers={
-                               "Content-Type": "application/json",
+                               "Content-Type": "application/json; charset=utf-8",
                                "Client-Token": "Fd7f15657ef534ae09757eefa5368120cS"
                            })
     try:
