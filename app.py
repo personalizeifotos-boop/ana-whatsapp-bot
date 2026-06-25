@@ -1468,27 +1468,45 @@ def whatsapp():
         data = request.get_json(force=True, silent=True) or {}
         print(f"[Webhook] PAYLOAD: {json.dumps(data)[:400]}")
 
-        if data.get("fromMe", False):
+        # ── Suporta Z-API e Evolution API ────────────────────────────
+        ev_data = data.get("data") if isinstance(data.get("data"), dict) else {}
+        ev_key  = ev_data.get("key") if isinstance(ev_data.get("key"), dict) else {}
+
+        from_me = data.get("fromMe", ev_key.get("fromMe", False))
+        if from_me:
             return "ok", 200
 
+        # Extrai phone: Z-API usa data.phone | Evolution API usa data.data.key.remoteJid
         phone = (data.get("phone", "")
                  .replace("@s.whatsapp.net", "")
                  .replace("@c.us", ""))
+        if not phone and ev_key:
+            rjid = ev_key.get("remoteJid", "")
+            if "@g.us" in rjid:
+                return "ok", 200  # ignora mensagens de grupos
+            phone = rjid.replace("@s.whatsapp.net", "").replace("@c.us", "")
         if not phone:
             return "ok", 200
 
-        # Ignora eventos onde phone é o próprio número da instância Z-API (connectedPhone)
+        # Ignora eventos onde phone é o próprio número da instância (Z-API: connectedPhone)
         connected = re.sub(r'\D', '', str(data.get("connectedPhone", "")))
         if connected and re.sub(r'\D', '', phone)[-11:] == connected[-11:]:
             print(f"[Webhook] Ignorando evento phone proprio ({phone})")
             return "ok", 200
 
-        msg_type = data.get("type") or data.get("tipo") or ""
+        # msg_type: Z-API usa "type"/"tipo" | Evolution API usa data.data.messageType
+        msg_type = data.get("type") or data.get("tipo") or ev_data.get("messageType") or ""
 
         def extrair_texto(d):
             v = d.get("body") or d.get("text") or d.get("texto") or ""
             if isinstance(v, dict):
                 return v.get("message") or v.get("body") or v.get("text") or ""
+            # Evolution API: texto em data.data.message.conversation ou extendedTextMessage
+            if not v and ev_data:
+                ev_msg = ev_data.get("message") or {}
+                v = (ev_msg.get("conversation")
+                     or (ev_msg.get("extendedTextMessage") or {}).get("text")
+                     or "")
             return str(v) if v else ""
 
         def extrair_image_url(d):
@@ -1498,6 +1516,13 @@ def whatsapp():
                     return v.get("imageUrl") or v.get("url") or v.get("mediaUrl") or ""
                 if isinstance(v, str) and v.startswith("http"):
                     return v
+            # Evolution API: URL em data.data.message.imageMessage.mediaUrl
+            if ev_data:
+                ev_msg = ev_data.get("message") or {}
+                img = ev_msg.get("imageMessage") or {}
+                url = img.get("mediaUrl") or img.get("url") or ""
+                if url:
+                    return url
             return d.get("imageUrl") or d.get("mediaUrl") or ""
 
         body = extrair_texto(data)
@@ -1528,6 +1553,9 @@ def whatsapp():
         tem_documento_imagem = False
         if msg_type in ("document", "documentMessage"):
             doc = data.get("document") or {}
+            # Evolution API: documento em data.data.message.documentMessage
+            if not doc and ev_data:
+                doc = (ev_data.get("message") or {}).get("documentMessage") or {}
             if isinstance(doc, dict):
                 mime = doc.get("mimeType", "").lower()
                 fname = doc.get("fileName", "").lower()
@@ -1537,17 +1565,20 @@ def whatsapp():
                 )
 
         tem_imagem = (
-            msg_type in ("image", "imagem")
+            msg_type in ("image", "imagem", "imageMessage")
             or "image" in data
             or "imagem" in data
             or (isinstance(body, str) and body.startswith("http")
                 and any(ext in body.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]))
             or tem_documento_imagem
+            or bool(ev_data and (ev_data.get("message") or {}).get("imageMessage"))
         )
         image_url = ""
         if tem_imagem:
             if tem_documento_imagem:
                 doc = data.get("document") or {}
+                if not doc and ev_data:
+                    doc = (ev_data.get("message") or {}).get("documentMessage") or {}
                 image_url = (doc.get("url") or doc.get("mediaUrl") or doc.get("imageUrl") or "") if isinstance(doc, dict) else ""
             else:
                 image_url = body if (body and body.startswith("http")) else extrair_image_url(data)
