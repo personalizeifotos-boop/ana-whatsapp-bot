@@ -396,7 +396,34 @@ def _detectar_tipo_na_mensagem(texto):
     return None
 
 # ââ Z-API: envio de mensagens âââââââââââââââââââââââââââââââââ
+def _fix_encoding(texto):
+    """Corrige strings UTF-8 armazenadas como Latin-1 (double-encoding)."""
+    resultado = []
+    segmento = []
+    for char in texto:
+        if ord(char) <= 255:
+            segmento.append(char)
+        else:
+            if segmento:
+                seg = ''.join(segmento)
+                try:
+                    seg = seg.encode('latin-1').decode('utf-8')
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    pass
+                resultado.append(seg)
+                segmento = []
+            resultado.append(char)
+    if segmento:
+        seg = ''.join(segmento)
+        try:
+            seg = seg.encode('latin-1').decode('utf-8')
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
+        resultado.append(seg)
+    return ''.join(resultado)
+
 def enviar_mensagem(phone, mensagem):
+    mensagem = _fix_encoding(mensagem)
     if not ANA_ATIVA:
         print(f"[Ana DESATIVADA] Mensagem bloqueada para {phone}: {mensagem[:80]}")
         return False
