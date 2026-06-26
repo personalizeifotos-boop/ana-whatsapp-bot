@@ -1586,13 +1586,13 @@ def whatsapp():
             # Evolution API: documento em data.data.message.documentMessage
             if not doc and ev_data:
                 doc = (ev_data.get("message") or {}).get("documentMessage") or {}
-            if isinstance(doc, dict):
-                mime = doc.get("mimeType", "").lower()
-                fname = doc.get("fileName", "").lower()
-                tem_documento_imagem = (
-                    "image/" in mime
-                    or any(fname.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"])
-                )
+            # Z-API envia mimeType e fileName no nivel raiz (nao aninhado em "document")
+            mime = ((doc.get("mimeType") if isinstance(doc, dict) else None) or data.get("mimeType") or "").lower()
+            fname = ((doc.get("fileName") if isinstance(doc, dict) else None) or data.get("fileName") or "").lower()
+            tem_documento_imagem = (
+                "image/" in mime
+                or any(fname.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"])
+            )
 
         tem_imagem = (
             msg_type in ("image", "imagem", "imageMessage")
@@ -1610,6 +1610,9 @@ def whatsapp():
                 if not doc and ev_data:
                     doc = (ev_data.get("message") or {}).get("documentMessage") or {}
                 image_url = (doc.get("url") or doc.get("mediaUrl") or doc.get("imageUrl") or "") if isinstance(doc, dict) else ""
+                # Z-API: URL do documento pode estar em body
+                if not image_url and body and body.startswith("http"):
+                    image_url = body
             else:
                 image_url = body if (body and body.startswith("http")) else extrair_image_url(data)
 
