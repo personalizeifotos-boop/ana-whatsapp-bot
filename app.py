@@ -233,7 +233,7 @@ def calcular_preco(texto):
     nome_tipo = None
 
     if any(k in tipo_raw_upper for k in ["MINI IMA", "MINI IMÃ", "MINIIMA", "MINIIMÃ"]):
-        preco_unitario = 2.50
+        preco_unitario = 2.00
         nome_tipo = "Mini imÃ£"
     elif any(k in tipo_raw_upper for k in ["IMA", "IMÃ", "IMAN", "IMÃN", "IMAG"]) and "IMAGEM" not in tipo_raw_upper:
         preco_unitario = 2.50
