@@ -81,10 +81,10 @@ PRECOS_EXTRA = {
     "Mini Fotos": 1.00,
     "A4": 3.00,
     "Fotos Retro com ima": 2.50,
-    "Mini Fotos com ima": 2.50,
+    "Mini Fotos com ima": 2.00,
     "Fotos Retro": 1.00,
     "Mini Fotos Retro": 1.00,
-    "Mini Fotos Retro com ima": 2.50,
+    "Mini Fotos Retro com ima": 2.00,
     "Tirinha": 1.00,
     "Cartao de Visita": 1.00,
     "Etiqueta": 1.00,
@@ -189,8 +189,9 @@ FAQ_RESPOSTAS = [
         "â¢ Mini foto â R$ 1,00\n"
         "â¢ Polaroide â R$ 1,00\n"
         "â¢ 15x21 cm â R$ 1,50\n"
-        "â¢ ImÃ£ / Mini imÃ£ â R$ 2,50\n"
-        "â¢ A4 â R$ 3,00\n\n"
+        "â¢ ImÃ£   â R$ 2,50\n"
+        "â¢ Mini ImÃ£   â R$ 2,00\n"
+        "â¢ A4 (21X30)  â R$ 3,00\n\n"
         "Esses valores sÃ£o cobrados apenas para fotos enviadas alÃ©m da quantidade do seu pedido. ð"
     ),
 ]
