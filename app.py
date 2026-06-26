@@ -271,7 +271,7 @@ def calcular_preco(texto):
     unitario_str = f"R$ {preco_unitario:.2f}".replace(".", ",")
 
     return (
-        f"{quantidade} fotos {nome_tipo} ficam {total_str}. U0001f60a\n"
+        f"{quantidade} fotos {nome_tipo} ficam {total_str}. 😊\n"
         f"(cada {nome_tipo} custa {unitario_str} — cobrado apenas para fotos além da quantidade do pedido)"
     )
 
