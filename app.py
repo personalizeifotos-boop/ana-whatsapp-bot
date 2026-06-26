@@ -612,7 +612,7 @@ def _upload_imagem_drive(image_url, phone, pedido="", tipo="", subpasta=""):
 
 def extrair_id_drive(texto):
     padroes = [
-        r'drive\.google\.com/drive/folders/([a-zA-Z0-9_-]+)',
+        r'drive\.google\.com/drive(?:/u/\d+)?/folders/([a-zA-Z0-9_-]+)',
         r'drive\.google\.com/open\?id=([a-zA-Z0-9_-]+)',
         r'drive\.google\.com/file/d/([a-zA-Z0-9_-]+)',
         r'drive\.google\.com/folderview\?id=([a-zA-Z0-9_-]+)',
