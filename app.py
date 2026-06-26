@@ -47,7 +47,7 @@ MSG_SAUDACAO = (
     "OlÃ¡, seja bem-vindo Ã  Personalizei! Obrigado pela sua compra. ð\n\n"
     "Antes de enviar qualquer imagem, Ã© de extrema importÃ¢ncia que vocÃª nos envie primeiro "
     "o nÃºmero do pedido. Esse nÃºmero estÃ¡ logo apÃ³s as letras ID: no seu comprovante de compra.\n\n"
-    "Por favor, digite ou copie e cole o nÃºmero â nÃ£o envie print, pois nosso sistema "
+    "Por favor, digite ou copie e cole o nÃºmero — nÃ£o envie print, pois nosso sistema "
     "nÃ£o consegue identificar imagens de texto."
 )
 MSG_SAUDACAO_RETORNO = (
@@ -93,7 +93,7 @@ PRECOS_EXTRA = {
     "Etiqueta": 1.00,
 }
 
-# Nome de exibiÃ§Ã£o (com acentos) para cada tipo â usado no Drive e nas mensagens
+# Nome de exibiÃ§Ã£o (com acentos) para cada tipo — usado no Drive e nas mensagens
 NOME_PASTA_TIPO = {
     "10X15":                    "10X15",
     "15X21":                    "15X21",
@@ -152,13 +152,13 @@ FAQ_RESPOSTAS = [
         ["como envio", "como mando", "como faÃ§o para enviar", "como enviar", "como mandar",
          "enviar fotos", "mandar fotos", "onde envio", "onde mando"],
         "Ã simples! Ã sÃ³ enviar as fotos diretamente aqui pelo WhatsApp mesmo. ð\n"
-        "Mas antes de enviar as fotos, nÃ£o esqueÃ§a de nos passar o nÃºmero do pedido â "
+        "Mas antes de enviar as fotos, nÃ£o esqueÃ§a de nos passar o nÃºmero do pedido — "
         "ele estÃ¡ logo apÃ³s 'ID:' no seu comprovante de compra da Shopee."
     ),
     (
         ["cancelar", "cancelamento", "desistir", "devolver", "estornar"],
         "VocÃª pode cancelar diretamente pela Shopee, sem problemas! ð "
-        "Mas se quiser, pode comprar mais fotos diretamente conosco e aproveitamos o pedido atual para enviar junto â "
+        "Mas se quiser, pode comprar mais fotos diretamente conosco e aproveitamos o pedido atual para enviar junto — "
         "assim fica mais prÃ¡tico. Ã sÃ³ me dizer quantas fotos vocÃª quer no total!"
     ),
     (
@@ -177,7 +177,7 @@ FAQ_RESPOSTAS = [
     (
         ["qualidade", "resolucao", "resoluÃ§Ã£o", "borrada", "pixelada", "nitida", "nÃ­tida"],
         "Trabalhamos com impressÃ£o de alta qualidade! Para melhores resultados, "
-        "recomendamos enviar fotos com boa resoluÃ§Ã£o â evite fotos com zoom excessivo ou tiradas de tela. ð¸"
+        "recomendamos enviar fotos com boa resoluÃ§Ã£o — evite fotos com zoom excessivo ou tiradas de tela. ð¸"
     ),
     (
         ["shopee", "loja", "produtos", "catalogo", "catÃ¡logo", "outros produtos"],
@@ -188,13 +188,13 @@ FAQ_RESPOSTAS = [
         ["quanto custa", "preÃ§o", "preco", "valor", "tabela", "quanto Ã©", "quanto e",
          "custa", "imÃ£", "ima", "iman", "custo", "cobrado", "cobra", "pago", "paga"],
         "Nossos preÃ§os por foto sÃ£o:\n"
-        "â¢ 10x15 cm â R$ 1,00\n"
-        "â¢ Mini foto â R$ 1,00\n"
-        "â¢ Polaroide â R$ 1,00\n"
-        "â¢ 15x21 cm â R$ 1,50\n"
-        "â¢ ImÃ£   â R$ 2,50\n"
-        "â¢ Mini ImÃ£   â R$ 2,00\n"
-        "â¢ A4 (21X30)  â R$ 3,00\n\n"
+        "• 10x15 cm — R$ 1,00\n"
+        "• Mini foto — R$ 1,00\n"
+        "• Polaroide — R$ 1,00\n"
+        "• 15x21 cm — R$ 1,50\n"
+        "• ImÃ£   — R$ 2,50\n"
+        "• Mini ImÃ£   — R$ 2,00\n"
+        "• A4 (21X30)  — R$ 3,00\n\n"
         "Esses valores sÃ£o cobrados apenas para fotos enviadas alÃ©m da quantidade do seu pedido. ð"
     ),
 ]
@@ -257,7 +257,7 @@ def calcular_preco(texto):
         preco_unitario = 3.00
         nome_tipo = "A4"
     elif not tipo_raw_upper:
-        # Sem tipo especificado â retornar tabela
+        # Sem tipo especificado — retornar tabela
         return None
 
     if preco_unitario is None:
@@ -269,7 +269,7 @@ def calcular_preco(texto):
 
     return (
         f"{quantidade} fotos {nome_tipo} ficam {total_str}. \U0001f60a\n"
-        f"(cada {nome_tipo} custa {unitario_str} â cobrado apenas para fotos alÃ©m da quantidade do pedido)"
+        f"(cada {nome_tipo} custa {unitario_str} — cobrado apenas para fotos alÃ©m da quantidade do pedido)"
     )
 
 def verificar_faq(texto_lower):
@@ -378,7 +378,7 @@ def extrair_sku_multiproduto(produto_str, corpo):
     return " + ".join(partes) if len(partes) > 1 else ""
 
 def msg_orientacao_multiproduto(produtos):
-    linhas = "\n".join(f"â¢ {p['limite']} fotos {p['tipo']}" for p in produtos)
+    linhas = "\n".join(f"• {p['limite']} fotos {p['tipo']}" for p in produtos)
     return (
         f"Identificamos que seu pedido possui {len(produtos)} produtos:\n"
         f"{linhas}\n\n"
@@ -507,7 +507,7 @@ def _upload_imagem_drive(image_url, phone, pedido="", tipo="", subpasta=""):
         with _url_req.urlopen(req, timeout=15) as resp:
             image_bytes = resp.read()
         if len(image_bytes) < 500:
-            print(f"[Drive] Imagem muito pequena ({len(image_bytes)}B) â URL expirada?")
+            print(f"[Drive] Imagem muito pequena ({len(image_bytes)}B) — URL expirada?")
             return image_url
 
         service = _drive_service()
@@ -702,7 +702,7 @@ def salvar_imagem_pendente(phone, image_url, pedido="", tipo=""):
         if ws is None:
             return
         data = datetime.now(BRASILIA).strftime("%d/%m/%Y %H:%M")
-        # Fix 1: Dedup â ignora URL jÃ¡ registrada (Z-API duplica eventos)
+        # Fix 1: Dedup — ignora URL jÃ¡ registrada (Z-API duplica eventos)
         suf = re.sub(r'\D', '', phone)
         suf = suf[-11:] if len(suf) >= 11 else suf
         for linha in ws.get_all_values()[1:]:
@@ -802,7 +802,7 @@ def salvar_ou_atualizar_cliente(phone, nome="", pedido=""):
             if not linha:
                 continue
             if _suf(linha[0]) == suf:
-                # Cliente existente â atualiza campos
+                # Cliente existente — atualiza campos
                 updates = []
                 nome_atual = linha[1].strip() if len(linha) > 1 else ""
                 total = int(linha[4].strip()) if len(linha) > 4 and linha[4].strip().isdigit() else 0
@@ -860,7 +860,7 @@ def verificar_inatividade_fotos(phone):
     if limite > 1 and recebidas == 1:
         enviar_mensagem(phone, f"Recebi 1 foto! ð¸ SerÃ£o {limite} cÃ³pias dessa mesma foto?")
         estado["status"] = "aguardando_confirmacao_copias"
-        print(f"[Ana] {phone}: 1 foto â perguntando {limite} cÃ³pias")
+        print(f"[Ana] {phone}: 1 foto — perguntando {limite} cÃ³pias")
         return
     if limite > 0 and recebidas < limite:
         faltam = limite - recebidas
@@ -989,7 +989,7 @@ def reavaliar_apos_delecao(phone):
 
 
 def avaliar_conclusao_timer(phone):
-    """Chamado 10s apÃ³s Ãºltima foto â confirma se ainda estÃ¡ em aguardando_fotos e conclui."""
+    """Chamado 10s apÃ³s Ãºltima foto — confirma se ainda estÃ¡ em aguardando_fotos e conclui."""
     estado = get_estado(phone)
     if estado["status"] == "aguardando_fotos":
         avaliar_conclusao(phone)
@@ -1113,7 +1113,7 @@ def vincular_pedido(phone, numero_pedido):
 
     print(f"[Ana] Pedido {numero_pedido} vinculado: limite={estado['limite_fotos']} tipo={tipo}")
 
-    # ââ Sheets em background â resposta jÃ¡ foi enviada acima ââââââââââââââââ
+    # ââ Sheets em background — resposta jÃ¡ foi enviada acima ââââââââââââââââ
     threading.Thread(
         target=_vincular_background,
         args=(phone, numero_pedido, estado, is_multi),
@@ -1154,7 +1154,7 @@ def processar_imagem_recebida(phone, image_url):
     elif pedido:
         tipo_img = identificar_tipo(estado.get("produto", ""), estado.get("sku", ""))
 
-    # ââ Upload em background â nÃ£o bloqueia o timer ââââââââââââââââââââââââ
+    # ââ Upload em background — nÃ£o bloqueia o timer ââââââââââââââââââââââââ
     estado["ultima_imagem_url"] = image_url  # guarda para cenÃ¡rio de cÃ³pias
     threading.Thread(
         target=_salvar_imagem_em_background,
@@ -1283,7 +1283,7 @@ def processar_texto_recebido(phone, body):
                 estado["limite_fotos"] = qtd_quero
                 return
 
-    # ââ Comprovante de pagamento (texto) â ignorado ââââââââââââââ
+    # ââ Comprovante de pagamento (texto) — ignorado ââââââââââââââ
     if status == "aguardando_pagamento":
         return
 
@@ -1334,7 +1334,7 @@ def extrair_numero_pedido(texto):
             return c
     return candidatos[0] if candidatos else None
 
-# ââ Thread IMAP â monitora Gmail âââââââââââââââââââââââââââââ
+# ââ Thread IMAP — monitora Gmail âââââââââââââââââââââââââââââ
 pedidos_processados = set()
 
 def extrair_corpo_email(msg):
@@ -1670,7 +1670,7 @@ def whatsapp():
                     estado["status"] = "aguardando_fotos"
                     print(f"[Ana] ReinÃ­cio: restaurando pedido {ultimo} ({fotos_ja} fotos) para {phone}")
                 else:
-                    # Cliente com pedidos anteriores mas sem pedido ativo â saudaÃ§Ã£o de retorno
+                    # Cliente com pedidos anteriores mas sem pedido ativo — saudaÃ§Ã£o de retorno
                     nome_part = f", {nome}" if nome else ""
                     saudacao = MSG_SAUDACAO_RETORNO.format(nome_part=nome_part)
                     enviar_mensagem(phone, saudacao)
@@ -1678,11 +1678,11 @@ def whatsapp():
                     print(f"[Ana] Cliente recorrente sem pedido ativo: {phone}")
 
             elif historico:
-                # Ja foi saudado antes (reinicio do servidor) â nao repete saudacao
+                # Ja foi saudado antes (reinicio do servidor) — nao repete saudacao
                 estado["status"] = "aguardando_pedido"
                 if historico.get("nome"):
                     estado["nome_cliente"] = historico["nome"]
-                print(f"[Ana] Cliente ja saudado: {phone} â sem saudacao")
+                print(f"[Ana] Cliente ja saudado: {phone} — sem saudacao")
 
             else:
                 # Primeiro contato de verdade
