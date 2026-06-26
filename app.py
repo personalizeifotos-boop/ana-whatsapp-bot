@@ -1496,10 +1496,10 @@ def verificar_gmail():
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         mail.select("inbox")
-        # Busca TODOS os emails da Shopee (sem filtro de assunto, para não perder emails)
-        _, msgs = mail.search(None, 'FROM "info@mail.shopee.com.br"')
+        # Busca apenas emails NÃO LIDOS da Shopee (UNSEEN = rápido, não depende de reinicialização)
+        _, msgs = mail.search(None, 'UNSEEN FROM "info@mail.shopee.com.br"')
         ids = msgs[0].split()
-        print(f"[IMAP] {len(ids)} emails da Shopee encontrados no inbox.")
+        print(f"[IMAP] {len(ids)} emails não lidos da Shopee encontrados.")
 
         pedidos_na_planilha = set()
         try:
@@ -1613,6 +1613,11 @@ def verificar_gmail():
                 time.sleep(2)
             finally:
                 pedidos_processados.add(eid)
+                # Marcar email como lido no Gmail para não reprocessar após restart
+                try:
+                    mail.store(eid, '+FLAGS', '\\Seen')
+                except Exception:
+                    pass
 
         print(f"[IMAP] {novos} novos pedidos.")
         mail.logout()
