@@ -162,8 +162,14 @@ FAQ_RESPOSTAS = [
         "assim fica mais prÃ¡tico. Ã sÃ³ me dizer quantas fotos vocÃª quer no total!"
     ),
     (
-        ["prazo", "quando chega", "quanto tempo", "quando fica pronto", "previsao", "previsÃ£o", "dias"],
-        "ApÃ³s recebermos todas as suas fotos, seu pedido Ã© preparado e postado em atÃ© 3 dias Ãºteis. ð¦"
+        ["prazo", "quando chega", "quanto tempo", "quanto tempo leva", "quando fica pronto",
+         "previsao", "previsão", "dias", "demora muito", "quantos dias",
+         "previsao de entrega", "previsão de entrega", "demora para entregar", "demora pra chegar"],
+        "Assim que enviarmos o seu pedido, você receberá o código de rastreio por onde poderá "
+        "acompanhar o envio. Aconselhamos acompanhar pelo site dos Correios, onde a atualização "
+        "é mais rápida do que na Shopee.\n\n"
+        "Tenha o seu número de rastreio em mãos e acesse o site dos Correios:\n"
+        "https://rastreamento.correios.com.br/app/index.php"
     ),
     (
         ["rastreio", "rastreamento", "codigo", "cÃ³digo", "postado", "enviou", "enviado"],
@@ -175,9 +181,12 @@ FAQ_RESPOSTAS = [
         "O frete Ã© calculado pela Shopee de acordo com o seu CEP e aparece no momento da compra."
     ),
     (
-        ["qualidade", "resolucao", "resoluÃ§Ã£o", "borrada", "pixelada", "nitida", "nÃ­tida"],
-        "Trabalhamos com impressÃ£o de alta qualidade! Para melhores resultados, "
-        "recomendamos enviar fotos com boa resoluÃ§Ã£o — evite fotos com zoom excessivo ou tiradas de tela. ð¸"
+        ["qualidade", "resolucao", "resoluÃ§Ã£o", "borrada", "pixelada", "nitida", "nÃ­tida",
+         "perde qualidade", "perde a qualidade", "perco qualidade", "nao perde", "não perde",
+         "as fotos perdem", "por aqui perde"],
+        "Não, pode enviar sem problemas! As fotos não perdem qualidade aqui. 😊\n"
+        "Para melhores resultados, recomendamos enviar fotos com boa resolução — "
+        "evite fotos com zoom excessivo ou tiradas de tela."
     ),
     (
         ["shopee", "loja", "produtos", "catalogo", "catÃ¡logo", "outros produtos"],
@@ -197,6 +206,58 @@ FAQ_RESPOSTAS = [
         "• A4 (21X30)  — R$ 3,00\n\n"
         "Esses valores sÃ£o cobrados apenas para fotos enviadas alÃ©m da quantidade do seu pedido. ð"
     ),
+    (
+        ["nao chegou", "não chegou", "fotos nao chegaram", "fotos não chegaram",
+         "pedido nao chegou", "pedido não chegou", "ainda nao chegou", "ainda não chegou",
+         "minha encomenda nao", "minha encomenda não", "minhas fotos nao chegaram"],
+        "Você precisa abrir uma reclamação no chat da Shopee pedindo atualização do seu pedido, "
+        "pois nós só fazemos a venda e a postagem — toda a logística da entrega é feita pela Shopee junto aos Correios. 😔\n"
+        "Nós como vendedores não temos controle nenhum sobre esse processo, sinto muito não poder ajudar!"
+    ),
+    (
+        ["quando sera enviado", "quando será enviado", "quando voces enviam", "quando vocês enviam",
+         "quando vao enviar", "quando vão enviar", "quando vai ser enviado", "quando enviam meu pedido",
+         "quando voces vao enviar", "quando vocês vão enviar"],
+        "Levamos 24h após você nos enviar as fotos para preparar o seu pedido para envio. 📦"
+    ),
+    (
+        ["porta retrato", "porta-retrato", "portaretrato", "album de foto", "álbum de foto",
+         "album de fotos", "álbum de fotos", "fazem album", "tem album", "fazem álbum", "tem álbum",
+         "fazem porta retrato", "tem porta retrato", "voces fazem album", "vocês fazem álbum"],
+        "Infelizmente não trabalhamos com esse produto, mas você pode ver todos os nossos produtos no link abaixo:\nhttps://tinyurl.com/mwpwmsr7"
+    ),
+    (
+        ["posso enviar por link", "enviar por link", "mandar por link", "link das fotos",
+         "link de fotos", "pelo link", "por link", "enviar pelo link", "fotos por link"],
+        "Sim, pode! Sem problemas. 😊"
+    ),
+    (
+        ["onde vejo o numero", "onde vejo o número", "onde fica o numero", "onde fica o número",
+         "onde esta o numero", "onde está o número", "onde encontro o numero", "onde encontro o número",
+         "onde fica o id", "onde vejo o id", "onde esta o id", "onde está o id"],
+        "O número do pedido está logo após as letras *ID:* no seu comprovante de compra da Shopee. 📋\n"
+        "É um número longo — geralmente começa com 25 ou 26, seguido de vários dígitos."
+    ),
+    (
+        ["me pediram para enviar", "me pediram pra enviar", "me mandaram enviar",
+         "fui redirecionado", "me indicaram", "me passaram esse numero", "me pediram para mandar"],
+        "Olá, seja bem-vindo à Personalizei! Obrigado pela sua compra. 😊\n\n"
+        "Antes de enviar qualquer imagem, é de extrema importância que você nos envie primeiro o número do pedido. "
+        "Esse número está logo após as letras *ID:* no seu comprovante de compra.\n\n"
+        "Por favor, digite ou copie e cole o número — não envie print, pois nosso sistema não consegue identificar imagens de texto."
+    ),
+    (
+        ["vou enviar as fotos", "vou mandar as fotos", "vou enviar agora",
+         "vou mandar agora", "vou te enviar as fotos", "vou te mandar as fotos"],
+        "OK, pode enviar! 😊"
+    ),
+    (
+        ["quero comprar mais fotos", "quero comprar fotos a mais", "comprar fotos extras",
+         "quero mais fotos", "quero fotos a mais", "comprar fotos a mais", "comprar mais fotos"],
+        "Sem problemas! Quantas fotos você quer comprar a mais e qual a dimensão? 😊\n"
+        "(Ex: 10 fotos 10x15, 5 mini fotos, 3 imãs, etc.)"
+    ),
+
 ]
 
 
@@ -1134,6 +1195,39 @@ def _salvar_imagem_em_background(phone, image_url, pedido, tipo_img, subpasta=""
 
 def processar_imagem_recebida(phone, image_url):
     estado = get_estado(phone)
+    # ── PIX comprovante ──────────────────────────────────────────
+    if estado["status"] == "aguardando_pagamento":
+        enviar_mensagem(phone, "Obrigado! 🙏")
+        estado["status"] = "concluido"
+        return
+
+    # ── Troca de fotos: receber fotos originais ────────────────────
+    if estado["status"] == "aguardando_foto_troca_original":
+        estado.setdefault("fotos_troca_originais", []).append(image_url)
+        cancelar_timer(phone)
+        def _fechar_troca_original(ph=phone):
+            e = get_estado(ph)
+            n = len(e.get("fotos_troca_originais", []))
+            enviar_mensagem(ph, f"Recebi {n} foto(s). Agora me envie as fotos que você quer imprimir no lugar. 😊")
+            e["status"] = "aguardando_foto_troca_nova"
+        iniciar_timer(phone, 8, _fechar_troca_original)
+        return
+
+    # ── Troca de fotos: receber fotos novas ───────────────────────
+    if estado["status"] == "aguardando_foto_troca_nova":
+        estado.setdefault("fotos_troca_novas", []).append(image_url)
+        pedido = estado.get("pedido", "")
+        tipo_img = identificar_tipo(estado.get("produto", ""), estado.get("sku", ""))
+        _salvar_imagem_em_background(phone, image_url, pedido, tipo_img, "troca")
+        cancelar_timer(phone)
+        def _fechar_troca_nova(ph=phone):
+            e = get_estado(ph)
+            n = len(e.get("fotos_troca_novas", []))
+            enviar_mensagem(ph, f"Troca feita com sucesso! ✅ Recebemos {n} foto(s) nova(s) para o seu pedido.")
+            e["status"] = "aguardando_fotos"
+        iniciar_timer(phone, 8, _fechar_troca_nova)
+        return
+
     if estado["status"] == "concluido":
         # Cliente recorrente: salva foto e pede numero do pedido
         print(f"[Ana] Cliente {phone} recorrente - salvando foto e pedindo novo pedido")
@@ -1314,6 +1408,16 @@ def processar_texto_recebido(phone, body):
         return
 
     # ââ CÃ¡lculo de preÃ§o: ex. "quanto daria 37 fotos imÃ£" ââââââââ
+    # ── Troca de fotos ──────────────────────────────────────────
+    if any(p in body_low for p in ["posso trocar", "trocar foto", "trocar as foto",
+                                    "quero trocar", "mudar as foto", "substituir foto",
+                                    "trocar uma foto", "trocar umas", "troca de foto"]):
+        enviar_mensagem(phone, "Sim, claro! 😊 Me envie as fotos que você quer trocar.")
+        estado["status"] = "aguardando_foto_troca_original"
+        estado["fotos_troca_originais"] = []
+        estado["fotos_troca_novas"] = []
+        return
+
     resposta_calc = calcular_preco(body_low)
     if resposta_calc:
         enviar_mensagem(phone, resposta_calc)
