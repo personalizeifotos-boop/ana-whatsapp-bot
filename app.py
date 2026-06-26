@@ -1849,7 +1849,7 @@ def whatsapp():
             processar_imagem_recebida(phone, image_url)
 
         # ââ Processa texto ââââââââââââââââââââââââââââââââââââââââ
-        elif body and not body.startswith("http"):
+        elif body:
             processar_texto_recebido(phone, body)
 
         return "ok", 200
