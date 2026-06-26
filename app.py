@@ -405,7 +405,7 @@ def enviar_mensagem(phone, mensagem):
     payload = json.dumps({"phone": phone_num, "message": mensagem}, ensure_ascii=False).encode("utf-8")
     req = _url_req.Request(url, data=payload,
                            headers={
-                               "Content-Type": "application/json; charset=utf-8",
+                               "Content-Type": "application/json",
                                "Client-Token": "Fd7f15657ef534ae09757eefa5368120cS"
                            })
     try:
