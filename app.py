@@ -1526,6 +1526,8 @@ def whatsapp():
 
         # msg_type: Z-API usa "type"/"tipo" | Evolution API usa data.data.messageType
         msg_type = data.get("type") or data.get("tipo") or ev_data.get("messageType") or ""
+        # DEBUG: log raw payload para diagnostico de documentos
+        print(f"[DEBUG] keys={list(data.keys())} msg_type={msg_type!r} mimeType={data.get('mimeType')!r} fileName={data.get('fileName')!r}")
 
         def extrair_texto(d):
             v = d.get("body") or d.get("text") or d.get("texto") or ""
