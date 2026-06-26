@@ -669,6 +669,7 @@ def processar_pasta_drive(phone, folder_id):
             image_url = f"https://drive.google.com/uc?id={file_id}&export=download"
             processar_imagem_recebida(phone, image_url)
             time.sleep(0.5)
+        enviar_mensagem(phone, f"✅ Pronto! Recebi {qtd} foto(s) do seu link com sucesso! 😊")
         print(f"[Drive] {qtd} imagens do Drive processadas para {phone}")
     except Exception as e:
         print(f"[Drive] Erro ao processar pasta para {phone}: {e}")
@@ -1384,19 +1385,28 @@ def processar_texto_recebido(phone, body):
     if status == "aguardando_pagamento":
         return
 
-    # ââ Detecta link do Google Drive âââââââââââââââââââââââââââââ
-    drive_id = extrair_id_drive(body)
-    if drive_id:
-        print(f"[Ana] Link Google Drive detectado de {phone}: {drive_id}")
-        enviar_mensagem(
-            phone,
-            "ð Recebi o link do Google Drive! Estou baixando suas fotos, aguarde um momento... ð"
-        )
-        threading.Thread(
-            target=processar_pasta_drive,
-            args=(phone, drive_id),
-            daemon=True
-        ).start()
+    # ââ Detecta link do Google Drive ââââââââ──────────────────────────────────────────────────────────
+    if re.search(r'https?://', body):
+        drive_id = extrair_id_drive(body)
+        if drive_id:
+            print(f"[Ana] Link Google Drive detectado de {phone}: {drive_id}")
+            enviar_mensagem(
+                phone,
+                "📁 Recebi o link do Google Drive! Estou baixando suas fotos, aguarde um momento... 📸"
+            )
+            threading.Thread(
+                target=processar_pasta_drive,
+                args=(phone, drive_id),
+                daemon=True
+            ).start()
+        else:
+            enviar_mensagem(
+                phone,
+                "Recebi o seu link! 😊 Para conseguir baixar as fotos automaticamente, "
+                "o link precisa ser de uma pasta do Google Drive compartilhada como "
+                "'Qualquer pessoa com o link pode ver'. "
+                "Você também pode enviar as fotos diretamente pelo WhatsApp. 📲"
+            )
         return
 
     # ââ Tenta extrair nÃºmero do pedido âââââââââââââââââââââââââââ
