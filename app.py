@@ -1547,7 +1547,12 @@ def verificar_gmail():
                         corpo, re.IGNORECASE
                     )
                     if m_prod:
-                        produto = m_prod.group(1).strip().rstrip('.')
+                        raw_prod = m_prod.group(1).strip().rstrip('.')
+                        for marcador in ['Quantidade SKU', 'SKU ', 'ID do pedido', 'Vendedor:', 'Entrega ', 'QUAL É O', 'Abraços']:
+                            idx_m = raw_prod.find(marcador)
+                            if idx_m > 0:
+                                raw_prod = raw_prod[:idx_m].strip()
+                        produto = raw_prod
 
                     m_qtd = re.search(r'Quantidade\s+(\d+)', corpo)
                     if m_qtd:
