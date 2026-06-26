@@ -650,6 +650,42 @@ def listar_imagens_pasta_drive(folder_id):
         print(f"[Drive] Erro ao listar pasta {folder_id}: {e}")
         return []
 
+NTFY_TOPIC = "personalizei-atendente-rodrigo"
+
+def _notificar_atendente_desktop(phone, body, estado):
+    """Notifica Rodrigo via ntfy.sh quando Ana nao sabe responder (cooldown 10min por cliente)."""
+    agora = time.time()
+    if agora - _alertas_atendente.get(phone, 0) < 600:
+        return
+    _alertas_atendente[phone] = agora
+
+    pedido = estado.get("pedido", "") if estado else ""
+    nome   = estado.get("nome_cliente", "") if estado else ""
+
+    linhas = ["*Cliente precisa de atendimento!*", f"Telefone: {phone}"]
+    if nome:
+        linhas.append(f"Nome: {nome}")
+    if pedido:
+        linhas.append(f"Pedido: {pedido}")
+    linhas.append(f"Mensagem: {body[:150]}")
+    mensagem = "\n".join(linhas)
+
+    try:
+        req = _url_req.Request(
+            f"https://ntfy.sh/{NTFY_TOPIC}",
+            data=mensagem.encode("utf-8"),
+            headers={
+                "Title": "Atendimento necessario - Ana Bot",
+                "Priority": "urgent",
+                "Tags": "rotating_light"
+            },
+            method="POST"
+        )
+        _url_req.urlopen(req, timeout=5)
+        print(f"[Ana] Atendente notificado para {phone}")
+    except Exception as e:
+        print(f"[Ana] Erro ao notificar atendente: {e}")
+
 def processar_pasta_drive(phone, folder_id):
     try:
         arquivos = listar_imagens_pasta_drive(folder_id)
@@ -1442,6 +1478,9 @@ def processar_texto_recebido(phone, body):
         return
 
     print(f"[Ana] Texto nÃ£o reconhecido de {phone}: {body[:60]}")
+    # Avisar cliente e notificar atendente
+    enviar_mensagem(phone, "NÃ£o entendi sua mensagem. 😅 Deixa eu chamar um atendente para te ajudar!")
+    _notificar_atendente_desktop(phone, body, estado)
 
 # ââ ExtraÃ§Ã£o do nÃºmero de pedido âââââââââââââââââââââââââââââ
 def extrair_numero_pedido(texto):
@@ -1453,6 +1492,7 @@ def extrair_numero_pedido(texto):
 
 # ââ Thread IMAP — monitora Gmail âââââââââââââââââââââââââââââ
 pedidos_processados = set()
+_alertas_atendente = {}  # phone -> timestamp do ultimo alerta (cooldown 10min)
 
 def extrair_corpo_email(msg):
     corpo = ""
