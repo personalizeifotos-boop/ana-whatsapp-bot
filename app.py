@@ -202,20 +202,22 @@ FAQ_RESPOSTAS = [
 
 def calcular_preco(texto):
     """
-    Detecta frases como 'quanto daria 37 fotos imÃ£' e retorna
-    a resposta com o total calculado. Retorna None se nÃ£o detectar.
+    Detecta frases como 'quanto daria 37 fotos ima' e retorna
+    a resposta com o total calculado. Retorna None se nao detectar.
     """
+    def _normaliza(s):
+        """Remove acentos para comparacao robusta (ima, ima, etc.)."""
+        return unicodedata.normalize('NFD', s).encode('ascii', 'ignore').decode().upper()
+
     t = texto.lower().strip()
 
-    # PadrÃµes: "quanto daria/fica/sai/custa X fotos [tipo]"
     m = re.search(
-        r'(?:quanto (?:daria|fica|sai|custa|seria|custaria)|valor de|preco de|preÃ§o de)'
-        r'\s+(\d+)\s+(?:fotos?|imÃ£s?|imas?)?\s*(.*)',
+        r'(?:quanto (?:daria|fica|sai|custa|seria|custaria)|valor de|preco de|pre.o de)'
+        r'\s+(\d+)\s+(?:fotos?|imas?)?\s*(.*)',
         t
     )
     if not m:
-        # Tenta "X fotos [tipo] quanto custa"
-        m2 = re.search(r'(\d+)\s+(?:fotos?\s+)?(\w[\w\s]*)(?:quanto|valor|preco|preÃ§o)', t)
+        m2 = re.search(r'(\d+)\s+(?:fotos?\s+)?(\w[\w\s]*)(?:quanto|valor|preco|pre.o)', t)
         if m2:
             quantidade = int(m2.group(1))
             tipo_raw = m2.group(2).strip()
@@ -225,40 +227,41 @@ def calcular_preco(texto):
         quantidade = int(m.group(1))
         tipo_raw = (m.group(2) or "").strip()
 
-    # Remove palavras desnecessÃ¡rias do tipo
-    for stop in ["de", "foto", "fotos", "imagem", "imagens"]:
-        tipo_raw = re.sub(r'\b' + stop + r'\b', '', tipo_raw).strip()
+    # Normalizar para ASCII ANTES de remover stop words (detecta mini foto/mini ima corretamente)
+    tipo_norm = _normaliza(tipo_raw)
 
-    tipo_raw_upper = tipo_raw.upper()
-
-    # Mapear para preÃ§o
     preco_unitario = None
     nome_tipo = None
 
-    if any(k in tipo_raw_upper for k in ["MINI IMA", "MINI IMÃ", "MINIIMA", "MINIIMÃ"]):
+    if any(k in tipo_norm for k in ["MINI IMA", "MINIIMA"]):
         preco_unitario = 2.00
-        nome_tipo = "Mini imÃ£"
-    elif any(k in tipo_raw_upper for k in ["IMA", "IMÃ", "IMAN", "IMÃN", "IMAG"]) and "IMAGEM" not in tipo_raw_upper:
-        preco_unitario = 2.50
-        nome_tipo = "ImÃ£"
-    elif any(k in tipo_raw_upper for k in ["MINI FOTO", "MINIFOTO"]):
+        nome_tipo = "Mini imã"
+    elif "MINI FOTO" in tipo_norm or "MINIFOTO" in tipo_norm or tipo_norm.strip() == "MINI":
         preco_unitario = 1.00
         nome_tipo = "Mini foto"
-    elif "POLAROIDE" in tipo_raw_upper or "POLAROID" in tipo_raw_upper:
-        preco_unitario = 1.00
-        nome_tipo = "Polaroide"
-    elif "15X21" in tipo_raw_upper or "15 X 21" in tipo_raw_upper or "15X 21" in tipo_raw_upper:
-        preco_unitario = 1.50
-        nome_tipo = "15x21 cm"
-    elif "10X15" in tipo_raw_upper or "10 X 15" in tipo_raw_upper or "10X 15" in tipo_raw_upper:
-        preco_unitario = 1.00
-        nome_tipo = "10x15 cm"
-    elif tipo_raw_upper.strip() == "A4" or tipo_raw_upper.startswith("A4"):
-        preco_unitario = 3.00
-        nome_tipo = "A4"
-    elif not tipo_raw_upper:
-        # Sem tipo especificado — retornar tabela
-        return None
+    else:
+        # Remove stop words e renormaliza
+        for stop in ["de", "foto", "fotos", "imagem", "imagens"]:
+            tipo_raw = re.sub(r'\b' + stop + r'\b', '', tipo_raw).strip()
+        tipo_norm = _normaliza(tipo_raw)
+
+        if any(k in tipo_norm for k in ["IMA", "IMAN"]) and "IMAGEM" not in tipo_norm:
+            preco_unitario = 2.50
+            nome_tipo = "Imã"
+        elif "POLAROIDE" in tipo_norm or "POLAROID" in tipo_norm:
+            preco_unitario = 1.00
+            nome_tipo = "Polaroide"
+        elif "15X21" in tipo_norm or "15 X 21" in tipo_norm or "15X 21" in tipo_norm:
+            preco_unitario = 1.50
+            nome_tipo = "15x21 cm"
+        elif "10X15" in tipo_norm or "10 X 15" in tipo_norm or "10X 15" in tipo_norm:
+            preco_unitario = 1.00
+            nome_tipo = "10x15 cm"
+        elif "A4" in tipo_norm or "21X30" in tipo_norm or "21 X 30" in tipo_norm:
+            preco_unitario = 3.00
+            nome_tipo = "A4"
+        else:
+            return None
 
     if preco_unitario is None:
         return None
@@ -268,8 +271,8 @@ def calcular_preco(texto):
     unitario_str = f"R$ {preco_unitario:.2f}".replace(".", ",")
 
     return (
-        f"{quantidade} fotos {nome_tipo} ficam {total_str}. \U0001f60a\n"
-        f"(cada {nome_tipo} custa {unitario_str} — cobrado apenas para fotos alÃ©m da quantidade do pedido)"
+        f"{quantidade} fotos {nome_tipo} ficam {total_str}. U0001f60a\n"
+        f"(cada {nome_tipo} custa {unitario_str} — cobrado apenas para fotos além da quantidade do pedido)"
     )
 
 def verificar_faq(texto_lower):
