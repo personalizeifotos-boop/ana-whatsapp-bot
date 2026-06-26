@@ -31,6 +31,9 @@ except Exception as _e:
 # Defina como True para reativar o envio de mensagens da Ana
 ANA_ATIVA = True
 
+# DEBUG: armazena últimos payloads para diagnóstico
+_ultimos_payloads = []
+
 # ââ ConfiguraÃ§Ãµes ââââââââââââââââââââââââââââââââââââââââââââ
 GMAIL_USER = os.environ.get("GMAIL_USER")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
@@ -1497,6 +1500,9 @@ def whatsapp():
     try:
         data = request.get_json(force=True, silent=True) or {}
         print(f"[Webhook] PAYLOAD: {json.dumps(data)[:400]}")
+        _ultimos_payloads.append({"ts": str(__import__("datetime").datetime.now()), "data": data})
+        if len(_ultimos_payloads) > 10:
+            _ultimos_payloads.pop(0)
 
         # ── Suporta Z-API e Evolution API ────────────────────────────
         ev_data = data.get("data") if isinstance(data.get("data"), dict) else {}
@@ -1709,6 +1715,10 @@ def whatsapp():
         print(f"[Webhook] Erro: {e}")
         traceback.print_exc()
         return "ok", 200
+
+@app.route("/debug-payloads", methods=["GET"])
+def debug_payloads():
+    return json.dumps(_ultimos_payloads, ensure_ascii=False, default=str), 200, {"Content-Type": "application/json"}
 
 @app.route("/", methods=["GET"])
 def health():
