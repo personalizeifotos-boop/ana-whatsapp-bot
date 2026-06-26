@@ -1496,8 +1496,10 @@ def verificar_gmail():
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         mail.select("inbox")
-        _, msgs = mail.search(None, '(FROM "info@mail.shopee.com.br" SUBJECT "Hora de enviar")')
+        # Busca TODOS os emails da Shopee (sem filtro de assunto, para não perder emails)
+        _, msgs = mail.search(None, 'FROM "info@mail.shopee.com.br"')
         ids = msgs[0].split()
+        print(f"[IMAP] {len(ids)} emails da Shopee encontrados no inbox.")
 
         pedidos_na_planilha = set()
         try:
@@ -1517,12 +1519,24 @@ def verificar_gmail():
                 _, data = mail.fetch(eid, "(RFC822)")
                 msg = email.message_from_bytes(data[0][1])
                 assunto = msg.get("Subject", "")
+                print(f"[IMAP] Email encontrado - assunto: {assunto[:80]}")
+                # Filtrar apenas emails de pedido (ignorar promoções e outros)
+                assunto_low = assunto.lower()
+                palavras_pedido = ["hora de enviar", "pedido", "enviar", "preparar", "order"]
+                if not any(p in assunto_low for p in palavras_pedido):
+                    print(f"[IMAP] Ignorando email não relacionado a pedido: {assunto[:60]}")
+                    pedidos_processados.add(eid)
+                    continue
                 corpo = extrair_corpo_email(msg)
 
                 m_subj = re.search(r'pedido\s+([A-Z0-9]{10,20})', assunto, re.IGNORECASE)
                 numero = (m_subj.group(1).upper() if m_subj
                           else (extrair_numero_pedido(assunto) or extrair_numero_pedido(corpo)))
 
+                if not numero:
+                    print(f"[IMAP] Número de pedido não encontrado no email: {assunto[:60]}")
+                elif numero.upper() in pedidos_na_planilha:
+                    print(f"[IMAP] Pedido {numero} já está na planilha, ignorando.")
                 if numero and numero.upper() not in pedidos_na_planilha:
                     produto = quantidade = sku = cliente = prazo = ""
 
