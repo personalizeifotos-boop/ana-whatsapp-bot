@@ -1589,8 +1589,10 @@ def whatsapp():
 
         # ââ Detecta imagem enviada como documento âââââââââââââââââ
         tem_documento_imagem = False
-        if msg_type in ("document", "documentMessage"):
-            doc = data.get("document") or {}
+        # Z-API usa type="ReceivedCallback" para tudo; documento fica em data["document"]
+        _doc_zapi = data.get("document") if isinstance(data.get("document"), dict) else None
+        if msg_type in ("document", "documentMessage") or _doc_zapi:
+            doc = _doc_zapi or {}
             # Evolution API: documento em data.data.message.documentMessage
             if not doc and ev_data:
                 doc = (ev_data.get("message") or {}).get("documentMessage") or {}
@@ -1628,7 +1630,7 @@ def whatsapp():
                 doc = data.get("document") or {}
                 if not doc and ev_data:
                     doc = (ev_data.get("message") or {}).get("documentMessage") or {}
-                image_url = (doc.get("url") or doc.get("mediaUrl") or doc.get("imageUrl") or "") if isinstance(doc, dict) else ""
+                image_url = (doc.get("url") or doc.get("documentUrl") or doc.get("mediaUrl") or doc.get("imageUrl") or "") if isinstance(doc, dict) else ""
                 # Z-API: URL do documento pode estar em body
                 if not image_url and body and body.startswith("http"):
                     image_url = body
