@@ -1596,6 +1596,17 @@ def whatsapp():
                 or any(fname.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"])
             )
 
+        # Fallback universal: Z-API pode enviar qualquer type (nao so "document")
+        # Se tiver fileName ou mimeType na raiz indicando imagem, trata como imagem-doc
+        if not tem_documento_imagem:
+            _mime_raiz = (data.get("mimeType") or "").lower()
+            _fname_raiz = (data.get("fileName") or "").lower()
+            if _mime_raiz or _fname_raiz:
+                tem_documento_imagem = (
+                    "image/" in _mime_raiz
+                    or any(_fname_raiz.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"])
+                )
+
         tem_imagem = (
             msg_type in ("image", "imagem", "imageMessage")
             or "image" in data
