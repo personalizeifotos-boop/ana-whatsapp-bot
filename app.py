@@ -9,7 +9,7 @@ import unicodedata
 import urllib.request as _url_req
 import gspread
 import pytz
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, request
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -1496,10 +1496,11 @@ def verificar_gmail():
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         mail.select("inbox")
-        # Busca apenas emails NÃO LIDOS da Shopee (UNSEEN = rápido, não depende de reinicialização)
-        _, msgs = mail.search(None, 'UNSEEN FROM "info@mail.shopee.com.br"')
+        # Busca apenas emails NÃO LIDOS da Shopee dos últimos 7 dias
+        desde = (datetime.now(BRASILIA) - timedelta(days=7)).strftime("%d-%b-%Y")
+        _, msgs = mail.search(None, f'UNSEEN FROM "info@mail.shopee.com.br" SINCE {desde}')
         ids = msgs[0].split()
-        print(f"[IMAP] {len(ids)} emails não lidos da Shopee encontrados.")
+        print(f"[IMAP] {len(ids)} emails não lidos da Shopee (últimos 7 dias) encontrados.")
 
         pedidos_na_planilha = set()
         try:
