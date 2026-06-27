@@ -4,6 +4,7 @@
 
 
 
+
 import os
 import re
 import json
@@ -914,7 +915,7 @@ def salvar_pedido(numero_pedido, produto="", quantidade="", sku="",
         print(f"[Sheets] Erro ao salvar pedido: {e}")
         raise
 
-def salvar_imagem_pendente(phone, image_url, pedido="", tipo=""):
+def salvar_imagem_pendente(phone, image_url, pedido="", tipo="", status="pendente"):
     try:
         ws = get_sheet("Imagens", ["Telefone", "URL", "Data", "Status", "Pedido", "Tipo"])
         if ws is None:
@@ -929,10 +930,44 @@ def salvar_imagem_pendente(phone, image_url, pedido="", tipo=""):
             if tel_suf == suf and len(linha) > 1 and linha[1].strip() == image_url:
                 print(f"[Imagens] URL duplicada ignorada: {phone}")
                 return
-        ws.append_row([phone, image_url, data, "pendente", pedido, tipo])
+        ws.append_row([phone, image_url, data, status, pedido, tipo])
         print(f"[Imagens] Registrada: {phone} (pedido: {pedido or 'nao vinculado'}, tipo: {tipo or '-'})")
     except Exception as e:
         print(f"[Imagens] Erro ao registrar: {e}")
+
+def confirmar_fotos_pedido(phone, pedido, limite):
+    """Confirma as primeiras {limite} fotos 'aguardando' do phone -> 'pendente'.
+    Excesso marcado como 'descartada'. Chamado em background apos contagem correta."""
+    try:
+        ws = get_sheet("Imagens")
+        if ws is None:
+            return
+        suf = re.sub(r'\D', '', phone)
+        suf = suf[-11:] if len(suf) >= 11 else suf
+        linhas = ws.get_all_values()
+        confirmadas = 0
+        updates = []
+        for i, linha in enumerate(linhas[1:], start=2):
+            if len(linha) < 4:
+                continue
+            tel = re.sub(r'\D', '', linha[0].strip())
+            tel_suf = tel[-11:] if len(tel) >= 11 else tel
+            if tel_suf != suf:
+                continue
+            if linha[3].strip().lower() != "aguardando":
+                continue
+            if confirmadas < limite:
+                updates.append({"range": f"D{i}", "values": [["pendente"]]})
+                confirmadas += 1
+            else:
+                updates.append({"range": f"D{i}", "values": [["descartada"]]})
+        if updates:
+            ws.batch_update(updates)
+            print(f"[Imagens] {confirmadas} fotos confirmadas p/ {phone} (pedido {pedido})")
+        else:
+            print(f"[Imagens] Nenhuma foto aguardando para {phone}")
+    except Exception as e:
+        print(f"[Imagens] Erro confirmar_fotos_pedido: {e}")
 
 def preencher_pedido_retroativo(phone, numero_pedido):
     try:
@@ -1170,6 +1205,7 @@ def reavaliar_apos_delecao(phone):
         enviar_mensagem(phone, MSG_FINALIZAR)
         estado["status"] = "concluido"
         cancelar_timer(phone)
+        threading.Thread(target=confirmar_fotos_pedido, args=(phone, estado.get("pedido", ""), limite), daemon=True).start()
         print(f"[Ana] Dele\u00e7\u00e3o \u2192 pedido conclu\u00eddo exato: {phone}")
 
     elif limite > 0 and recebidas > limite:
@@ -1253,6 +1289,7 @@ def avaliar_conclusao(phone):
         enviar_mensagem(phone, MSG_FINALIZAR)
         estado["status"] = "concluido"
         cancelar_timer(phone)
+        threading.Thread(target=confirmar_fotos_pedido, args=(phone, estado.get("pedido", ""), limite), daemon=True).start()
 
     elif recebidas > limite:
         extras = recebidas - limite
@@ -1359,7 +1396,7 @@ def _salvar_imagem_em_background(phone, image_url, pedido, tipo_img, subpasta=""
     """Upload no Drive + Sheets em background, sem bloquear o timer."""
     try:
         drive_url = _upload_imagem_drive(image_url, phone, pedido=pedido, tipo=tipo_img, subpasta=subpasta)
-        salvar_imagem_pendente(phone, drive_url, pedido, tipo_img)
+        salvar_imagem_pendente(phone, drive_url, pedido, tipo_img, status="aguardando")
     except Exception as e:
         print(f"[Ana] Erro background imagem {phone}: {e}")
 
