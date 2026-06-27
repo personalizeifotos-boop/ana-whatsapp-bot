@@ -7,6 +7,7 @@
 
 
 
+
 import os
 import re
 import json
@@ -937,6 +938,25 @@ def salvar_imagem_pendente(phone, image_url, pedido="", tipo="", status="pendent
     except Exception as e:
         print(f"[Imagens] Erro ao registrar: {e}")
 
+def _forcar_conclusao_descarte(phone):
+    """Conclui pedido em aguardando_descarte mesmo sem webhook de delecao.
+    Usa confirmar_fotos_pedido para marcar so as primeiras N fotos como pendente."""
+    estado = get_estado(phone)
+    if estado["status"] != "aguardando_descarte":
+        return  # ja concluido via webhook normal
+    limite = estado["limite_fotos"]
+    tipo = identificar_tipo(estado.get("produto", ""), estado.get("sku", ""))
+    enviar_mensagem(phone, f"Perfeito, {limite} fotos {tipo} \u2705")
+    enviar_mensagem(phone, MSG_FINALIZAR)
+    estado["status"] = "concluido"
+    cancelar_timer(phone)
+    threading.Thread(
+        target=confirmar_fotos_pedido,
+        args=(phone, estado.get("pedido", ""), limite),
+        daemon=True
+    ).start()
+    print(f"[Ana] Conclusao forcada descarte: {phone} ({limite} fotos)")
+
 def confirmar_fotos_pedido(phone, pedido, limite):
     """Confirma as primeiras {limite} fotos 'aguardando' do phone -> 'pendente'.
     Excesso marcado como 'descartada'. Chamado em background apos contagem correta."""
@@ -1583,32 +1603,22 @@ def processar_texto_recebido(phone, body):
             extras_del = estado.get('fotos_extras', max(0, estado['fotos_recebidas'] - estado['limite_fotos']))
             enviar_mensagem(
                 phone,
-                f"Tudo bem, delete {extras_del} foto(s) e depois me responda com 'ok' para darmos continuidade ao seu pedido. U0001f60a"
+                f"Tudo bem, delete {extras_del} foto(s) para que possamos dar continuidade ao seu pedido."
             )
             estado["status"] = "aguardando_descarte"
         return
 
     # ── Aguardando cliente deletar fotos excedentes ───────────────────
     if status == "aguardando_descarte":
-        confirmacoes = [
-            "ok", "feito", "pronto", "fiz", "sim", "s", "done",
-            "deletei", "apaguei", "ja deletei", "já deletei",
-            "ja apaguei", "já apaguei", "ja fiz", "já fiz",
-            "deletado", "apagado"
-        ]
-        if any(p in body_low for p in confirmacoes):
-            limite = estado["limite_fotos"]
-            tipo = identificar_tipo(estado.get("produto", ""), estado.get("sku", ""))
-            enviar_mensagem(phone, f"Perfeito, {limite} fotos {tipo} \u2705")
-            enviar_mensagem(phone, MSG_FINALIZAR)
-            estado["status"] = "concluido"
-            cancelar_timer(phone)
-            threading.Thread(
-                target=confirmar_fotos_pedido,
-                args=(phone, estado.get("pedido", ""), limite),
-                daemon=True
-            ).start()
-            return
+        limite = estado["limite_fotos"]
+        recebidas = estado["fotos_recebidas"]
+        if recebidas <= limite:
+            # Webhook ja chegou e decrementou corretamente — concluir
+            avaliar_conclusao(phone)
+        else:
+            # Webhook pode ter atrasado — aguardar 20s e concluir com as primeiras N fotos
+            iniciar_timer(phone, 20, lambda: _forcar_conclusao_descarte(phone))
+        return
 
     # ââ Cliente quer enviar menos fotos do que o pedido ââââââââââ
     if status in ("aguardando_fotos", "aguardando_pedido"):
