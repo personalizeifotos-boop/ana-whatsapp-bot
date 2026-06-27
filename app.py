@@ -1755,10 +1755,22 @@ def verificar_gmail():
                                 m_num = re.search(r'(\d+)\s*FOTO', m_kit.group(1).upper())
                                 sku = (m_num.group(1) + ' fotos') if m_num else m_kit.group(1).strip()
 
-                    mc = re.search(r'Envie o pedido para ([^\.\n,]+)', corpo)
+                    # ── Cliente: múltiplos padrões de fallback ───────────────
+                    mc = re.search(r'Envie\w*\s+o\s+pedido\s+para\s+([^\.\n\r<]{3,60})', corpo, re.IGNORECASE)
+                    if not mc:
+                        mc = re.search(r'Entregar\s+para[:\s]+([^\.\n\r<]{3,60})', corpo, re.IGNORECASE)
+                    if not mc:
+                        mc = re.search(r'destinat[aá]rio[:\s]+([^\.\n\r<]{3,60})', corpo, re.IGNORECASE)
+                    if not mc:
+                        mc = re.search(r'Nome[:\s]+([A-Za-zÀ-ú][^\.\n\r<]{2,50})', corpo, re.IGNORECASE)
                     if mc:
-                        cliente = mc.group(1).strip()
-                    mp = re.search(r'(At\S*\s+\d+\s+de\s+\w+)', corpo, re.IGNORECASE)
+                        cliente = mc.group(1).strip().rstrip('.')
+                    # ── Prazo: múltiplos padrões de fallback ─────────────────
+                    mp = re.search(r'(At[eé]\s+\d+\s+de\s+\w+)', corpo, re.IGNORECASE)
+                    if not mp:
+                        mp = re.search(r'(At[eé]\s+\d{1,2}/\d{1,2}(?:/\d{2,4})?)', corpo, re.IGNORECASE)
+                    if not mp:
+                        mp = re.search(r'prazo\w*[:\s]+(\d+\s+de\s+\w+)', corpo, re.IGNORECASE)
                     if mp:
                         prazo = mp.group(1).strip()
 
