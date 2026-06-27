@@ -229,7 +229,9 @@ FAQ_RESPOSTAS = [
     (
         ["posso enviar por link", "enviar por link", "mandar por link", "link das fotos",
          "link de fotos", "pelo link", "por link", "enviar pelo link", "fotos por link"],
-        "Sim, pode! Sem problemas. 😊"
+        "Sim pode, sem problemas, mas eu só consigo ler links do *Google Drive*. 😊
+
+Se as suas fotos estiverem em outro serviço, vou precisar chamar um atendente para te ajudar."
     ),
     (
         ["onde vejo o numero", "onde vejo o número", "onde fica o numero", "onde fica o número",
@@ -257,6 +259,19 @@ FAQ_RESPOSTAS = [
         "Sem problemas! Quantas fotos você quer comprar a mais e qual a dimensão? 😊\n"
         "(Ex: 10 fotos 10x15, 5 mini fotos, 3 imãs, etc.)"
     ),
+    (
+        ["me manda o pix", "manda o pix", "manda seu pix", "me manda seu pix",
+         "qual o pix", "qual seu pix", "qual o seu pix", "numero do pix", "número do pix",
+         "chave pix", "chave do pix", "qual a chave", "qual e o pix", "qual é o pix",
+         "me passa o pix", "passa o pix"],
+        "Segue a chave PIX 👇\n\nTitular: Rodrigo Vieira Monteiro\nChave PIX: 58733941000114"
+    ),
+    (
+        ["vou te enviar o pix", "vou enviar o pix", "vou mandar o pix", "vou te mandar o pix",
+         "vou fazer o pix", "vou pagar agora", "vou pagar pelo pix", "vou fazer a transferencia",
+         "vou fazer a transferência", "vou te mandar o comprovante", "vou enviar o comprovante"],
+        "OK 👍"
+    ),
 
 ]
 
@@ -271,6 +286,34 @@ def calcular_preco(texto):
         return unicodedata.normalize('NFD', s).encode('ascii', 'ignore').decode().upper()
 
     t = texto.lower().strip()
+
+    # ── Detecta "quero comprar X fotos Y" / "compra X fotos Y" ──
+    m_compra = re.search(
+        r'(?:quero|quer|compra|comprar|preciso de|queria)\s+(\d+)\s*(?:fotos?\s+)?(\w[\w\s]*)',
+        t
+    )
+    if m_compra:
+        qtd_c = int(m_compra.group(1))
+        tipo_c = m_compra.group(2).strip()
+        tipo_c_norm = unicodedata.normalize('NFD', tipo_c).encode('ascii', 'ignore').decode().upper()
+        preco_c = None
+        nome_c = None
+        if '10X15' in tipo_c_norm or '10 X 15' in tipo_c_norm:
+            preco_c, nome_c = 1.00, '10x15 cm'
+        elif '15X21' in tipo_c_norm or '15 X 21' in tipo_c_norm:
+            preco_c, nome_c = 1.50, '15x21 cm'
+        elif any(k in tipo_c_norm for k in ['IMA', 'IMAN']) and 'IMAGEM' not in tipo_c_norm:
+            preco_c, nome_c = 2.50, 'Imã'
+        elif 'POLAROIDE' in tipo_c_norm or 'POLAROID' in tipo_c_norm:
+            preco_c, nome_c = 1.00, 'Polaroide'
+        elif 'A4' in tipo_c_norm:
+            preco_c, nome_c = 3.00, 'A4'
+        elif 'MINI' in tipo_c_norm:
+            preco_c, nome_c = 1.00, 'Mini foto'
+        if preco_c is not None:
+            total_c = qtd_c * preco_c
+            total_str_c = f"R$ {total_c:.2f}".replace('.', ',')
+            return f"As {qtd_c} fotos {nome_c} custam {total_str_c}. 😊"
 
     m = re.search(
         r'(?:quanto (?:daria|fica|sai|custa|seria|custaria)|valor de|preco de|pre.o de)'
@@ -387,6 +430,7 @@ def get_estado(phone):
             "multi_produto": False,
             "produtos": [],
             "produto_ativo_idx": -1,
+            "expecting_pix": False,    # próxima imagem é comprovante PIX
         }
     return estado_clientes[phone]
 
@@ -1233,9 +1277,10 @@ def _salvar_imagem_em_background(phone, image_url, pedido, tipo_img, subpasta=""
 def processar_imagem_recebida(phone, image_url):
     estado = get_estado(phone)
     # ── PIX comprovante ──────────────────────────────────────────
-    if estado["status"] == "aguardando_pagamento":
-        enviar_mensagem(phone, "Obrigado! 🙏")
+    if estado["status"] == "aguardando_pagamento" or estado.get("expecting_pix"):
+        enviar_mensagem(phone, "Obrigado! 🙏 PIX recebido com sucesso!")
         estado["status"] = "concluido"
+        estado["expecting_pix"] = False
         return
 
     # ── Troca de fotos: receber fotos originais ────────────────────
@@ -1438,11 +1483,10 @@ def processar_texto_recebido(phone, body):
         else:
             enviar_mensagem(
                 phone,
-                "Recebi o seu link! 😊 Para conseguir baixar as fotos automaticamente, "
-                "o link precisa ser de uma pasta do Google Drive compartilhada como "
-                "'Qualquer pessoa com o link pode ver'. "
-                "Você também pode enviar as fotos diretamente pelo WhatsApp. 📲"
+                "Infelizmente só consigo processar links do *Google Drive*. 😅\n\n"
+                "Vou chamar um atendente para te ajudar!"
             )
+            _notificar_atendente_desktop(phone, f"Cliente enviou link não-Drive: {body}", estado)
         return
 
     # ââ Tenta extrair nÃºmero do pedido âââââââââââââââââââââââââââ
@@ -1473,6 +1517,11 @@ def processar_texto_recebido(phone, body):
     # ââ FAQ: responde perguntas frequentes ââââââââââââââââââââââââ
     resposta_faq = verificar_faq(body_low)
     if resposta_faq:
+        # Sinaliza que próxima imagem pode ser comprovante PIX
+        if any(k in body_low for k in ["vou te enviar o pix", "vou enviar o pix",
+                                        "vou mandar o pix", "vou te mandar o pix",
+                                        "vou pagar", "vou fazer o pix", "comprovante"]):
+            estado["expecting_pix"] = True
         enviar_mensagem(phone, resposta_faq)
         print(f"[Ana] FAQ respondido para {phone}: {body[:60]}")
         return
