@@ -321,6 +321,23 @@ def calcular_preco(texto):
             total_str_c = f"R$ {total_c:.2f}".replace('.', ',')
             return f"As {qtd_c} fotos {nome_c} custam {total_str_c}. 😊"
 
+    # ── Detecta resposta direta "X fotos TIPO" (ex: "10 fotos 10x15") ──
+    m_direto = re.search(r'(\d+)\s+fotos?\s+(.+)', t)
+    if m_direto:
+        qtd_d = int(m_direto.group(1))
+        tipo_d_norm = unicodedata.normalize('NFD', m_direto.group(2).strip()).encode('ascii', 'ignore').decode().upper()
+        preco_d = None; nome_d = None
+        if '10X15' in tipo_d_norm or '10 X 15' in tipo_d_norm: preco_d, nome_d = 1.00, '10x15 cm'
+        elif '15X21' in tipo_d_norm or '15 X 21' in tipo_d_norm: preco_d, nome_d = 1.50, '15x21 cm'
+        elif any(k in tipo_d_norm for k in ['IMA', 'IMAN']) and 'IMAGEM' not in tipo_d_norm: preco_d, nome_d = 2.50, 'Imã'
+        elif 'POLAROIDE' in tipo_d_norm or 'POLAROID' in tipo_d_norm: preco_d, nome_d = 1.00, 'Polaroide'
+        elif 'A4' in tipo_d_norm: preco_d, nome_d = 3.00, 'A4'
+        elif 'MINI' in tipo_d_norm: preco_d, nome_d = 1.00, 'Mini foto'
+        if preco_d is not None:
+            total_d = qtd_d * preco_d
+            total_str_d = f"R$ {total_d:.2f}".replace('.', ',')
+            return f"As {qtd_d} fotos {nome_d} custam {total_str_d}. 😊"
+
     m = re.search(
         r'(?:quanto (?:daria|fica|sai|custa|seria|custaria)|valor de|preco de|pre.o de)'
         r'\s+(\d+)\s+(?:fotos?|imas?)?\s*(.*)',
