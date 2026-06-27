@@ -512,7 +512,9 @@ def identificar_tipo(produto, sku):
     return "10X15"
 
 def extrair_limite_fotos(sku):
-    m = re.search(r'(\d{2,3})\s*fotos?', sku, re.IGNORECASE)
+    m = re.search(r'(\d+)\s*fotos?', sku, re.IGNORECASE)
+    if not m:
+        m = re.search(r'^(\d+)', sku.strip())  # fallback: '6 Mini fotos' → 6
     return int(m.group(1)) if m else 0
 
 def parse_sku_produtos(sku):
@@ -1066,6 +1068,10 @@ def verificar_inatividade_fotos(phone):
         return
     limite = estado["limite_fotos"]
     recebidas = estado["fotos_recebidas"]
+    # ── Pedido sem limite definido → avalia conclusão ────────────────────
+    if limite == 0:
+        avaliar_conclusao(phone)
+        return
     # ââ CenÃ¡rio de cÃ³pias: 1 foto recebida para pedido com mÃºltiplas ââââââ
     if limite > 1 and recebidas == 1:
         enviar_mensagem(phone, f"Recebi 1 foto! ð¸ SerÃ£o {limite} cÃ³pias dessa mesma foto?")
