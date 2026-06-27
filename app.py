@@ -1,5 +1,6 @@
 
 
+
 import os
 import re
 import json
@@ -1176,7 +1177,7 @@ def reavaliar_apos_delecao(phone):
                 phone,
                 f"Ainda faltam {extras} foto(s) para deletar! Por favor, apague mais {extras} foto(s). \U0001f60a"
             )
-            iniciar_timer(phone, 300, lambda: reavaliar_apos_delecao(phone))
+            # Aguardar próximo webhook de deleção
         else:
             # Fluxo normal: oferecer comprar extras
             preco = PRECOS_EXTRA.get(tipo, 1.00)
@@ -1904,7 +1905,7 @@ def whatsapp():
             if estado["status"] in ("aguardando_fotos", "aguardando_descarte") and estado["fotos_recebidas"] > 0:
                 estado["fotos_recebidas"] = max(0, estado["fotos_recebidas"] - 1)
                 print(f"[Ana] Foto deletada: agora {estado['fotos_recebidas']}/{estado['limite_fotos']}")
-                iniciar_timer(phone, 30, lambda: reavaliar_apos_delecao(phone))
+                reavaliar_apos_delecao(phone)
             return "ok", 200
 
         # ââ Detecta imagem enviada como documento âââââââââââââââââ
