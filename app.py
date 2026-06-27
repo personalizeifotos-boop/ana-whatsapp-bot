@@ -1,6 +1,7 @@
 
 
 
+
 import os
 import re
 import json
@@ -1207,6 +1208,18 @@ def reavaliar_apos_delecao(phone):
         iniciar_timer(phone, 600, lambda: verificar_inatividade_fotos(phone))
 
 
+    elif limite > 0 and recebidas < limite:
+        faltam = limite - recebidas
+        enviar_mensagem(
+            phone,
+            f"Atenção! Você deletou mais fotos do que o necessário. "
+            f"Seu pedido é de {limite} fotos e recebemos apenas {recebidas}. "
+            f"Por favor, envie mais {faltam} foto(s)."
+        )
+        estado["status"] = "aguardando_fotos"
+        iniciar_timer(phone, 600, lambda: verificar_inatividade_fotos(phone))
+        print(f"[Ana] Deleção excessiva: {recebidas}/{limite} para {phone}")
+
 def avaliar_conclusao_timer(phone):
     """Chamado 10s apÃ³s Ãºltima foto — confirma se ainda estÃ¡ em aguardando_fotos e conclui."""
     estado = get_estado(phone)
@@ -1905,7 +1918,7 @@ def whatsapp():
             if estado["status"] in ("aguardando_fotos", "aguardando_descarte") and estado["fotos_recebidas"] > 0:
                 estado["fotos_recebidas"] = max(0, estado["fotos_recebidas"] - 1)
                 print(f"[Ana] Foto deletada: agora {estado['fotos_recebidas']}/{estado['limite_fotos']}")
-                reavaliar_apos_delecao(phone)
+                iniciar_timer(phone, 30, lambda: reavaliar_apos_delecao(phone))
             return "ok", 200
 
         # ââ Detecta imagem enviada como documento âââââââââââââââââ
