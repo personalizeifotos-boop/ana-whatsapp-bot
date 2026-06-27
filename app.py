@@ -5,6 +5,7 @@
 
 
 
+
 import os
 import re
 import json
@@ -1571,7 +1572,13 @@ def processar_texto_recebido(phone, body):
             )
             estado["status"] = "aguardando_pagamento"
 
-        elif any(p in body_low for p in ["nÃ£o", "nao", "nÃ£", "no", "n"]):
+        elif any(p in body_low for p in [
+            "nÃ£o", "nao", "nÃ£", "no", "n",
+            "vou deletar", "vou apagar", "vou excluir",
+            "ja deletei", "jÃ¡ deletei", "ja apaguei", "jÃ¡ apaguei",
+            "deletar", "apagar", "excluir", "delete", "apago", "deleto",
+            "ok", "tudo bem", "certo", "entendido", "combinado"
+        ]):
             extras_del = estado.get('fotos_extras', max(0, estado['fotos_recebidas'] - estado['limite_fotos']))
             enviar_mensagem(
                 phone,
