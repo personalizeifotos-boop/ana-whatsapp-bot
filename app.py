@@ -2,6 +2,7 @@
 
 
 
+
 import os
 import re
 import json
@@ -1902,6 +1903,9 @@ def whatsapp():
         # ââ Detecta mensagem deletada/revogada pelo cliente âââââââ
         # Z-API pode usar vÃ¡rios campos diferentes para indicar deleÃ§Ã£o
         tipo_lower = str(msg_type).lower()
+        notif_lower = str(data.get("notification") or "").lower()
+        if notif_lower:
+            print(f"[Ana] notification={notif_lower!r} notifParams={data.get('notificationParameters')!r}")
         is_deleted = (
             data.get("isRevoked") is True
             or data.get("revoked") is True
@@ -1911,6 +1915,9 @@ def whatsapp():
                               "revokedmessage", "deletedmessage", "revoke")
             or "revok" in tipo_lower
             or "delet" in tipo_lower
+            or "revok" in notif_lower
+            or "delet" in notif_lower
+            or "apag" in notif_lower
         )
         if is_deleted:
             print(f"[Ana] Mensagem deletada detectada de {phone} (type={msg_type})")
