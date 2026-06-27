@@ -6,6 +6,7 @@
 
 
 
+
 import os
 import re
 import json
@@ -1582,10 +1583,32 @@ def processar_texto_recebido(phone, body):
             extras_del = estado.get('fotos_extras', max(0, estado['fotos_recebidas'] - estado['limite_fotos']))
             enviar_mensagem(
                 phone,
-                f"Tudo bem, delete {extras_del} foto(s) para que possamos dar continuidade ao seu pedido."
+                f"Tudo bem, delete {extras_del} foto(s) e depois me responda com 'ok' para darmos continuidade ao seu pedido. U0001f60a"
             )
             estado["status"] = "aguardando_descarte"
         return
+
+    # ── Aguardando cliente deletar fotos excedentes ───────────────────
+    if status == "aguardando_descarte":
+        confirmacoes = [
+            "ok", "feito", "pronto", "fiz", "sim", "s", "done",
+            "deletei", "apaguei", "ja deletei", "já deletei",
+            "ja apaguei", "já apaguei", "ja fiz", "já fiz",
+            "deletado", "apagado"
+        ]
+        if any(p in body_low for p in confirmacoes):
+            limite = estado["limite_fotos"]
+            tipo = identificar_tipo(estado.get("produto", ""), estado.get("sku", ""))
+            enviar_mensagem(phone, f"Perfeito, {limite} fotos {tipo} \u2705")
+            enviar_mensagem(phone, MSG_FINALIZAR)
+            estado["status"] = "concluido"
+            cancelar_timer(phone)
+            threading.Thread(
+                target=confirmar_fotos_pedido,
+                args=(phone, estado.get("pedido", ""), limite),
+                daemon=True
+            ).start()
+            return
 
     # ââ Cliente quer enviar menos fotos do que o pedido ââââââââââ
     if status in ("aguardando_fotos", "aguardando_pedido"):
