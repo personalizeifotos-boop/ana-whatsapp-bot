@@ -143,6 +143,48 @@ MAPEAMENTO_TIPO = [
     ("TAGS",                "Tags"),
 ]
 
+# ── Pastas exatas de destino (nomes iguais às pastas em PEDIDOS_SHOPEE) ──────
+PASTAS = [
+    "Mini fotos retrô com imã",
+    "Mini fotos retrô",
+    "Mini fotos com imã",
+    "Mini fotos",
+    "Fotos retrô com imã",
+    "Fotos retrô",
+    "Cartão de visita",
+    "Adesivos",
+    "Tirinha",
+    "Tags",
+    "A4",
+    "15X21",
+    "10X15",
+]
+
+def _norm_txt(t):
+    return unicodedata.normalize("NFD", t).encode("ascii", "ignore").decode().upper()
+
+def identificar_pasta(produto):
+    """Retorna o nome exato da pasta mais adequada para o produto."""
+    t = _norm_txt(produto)
+    eh_mini   = "MINI" in t
+    tem_retro = any(k in t for k in ["RETRO", "POLAROID", "POLAROIDE"])
+    tem_ima   = ("IMA" in t and "IMAGEM" not in t) or "GELADEIRA" in t
+    if eh_mini:
+        if tem_retro and tem_ima: return "Mini fotos retrô com imã"
+        if tem_retro:             return "Mini fotos retrô"
+        if tem_ima:               return "Mini fotos com imã"
+        return "Mini fotos"
+    if tem_retro:
+        return "Fotos retrô com imã" if tem_ima else "Fotos retrô"
+    if "15X21" in t or "15 X 21" in t: return "15X21"
+    if "10X15" in t or "10 X 15" in t: return "10X15"
+    if "21X30" in t or "A4" in t:      return "A4"
+    if "CARTAO" in t and "VISITA" in t: return "Cartão de visita"
+    if "ADESIVO" in t or "ETIQUETA" in t: return "Adesivos"
+    if "TIRINHA" in t:                 return "Tirinha"
+    if "TAG" in t:                     return "Tags"
+    return "10X15"
+
 PEDIDO_REGEX = re.compile(r'\b([A-Z0-9]{10,20})\b')
 
 # ââ FAQ baseado em conversas reais com clientes ââââââââââââââ
@@ -1673,21 +1715,26 @@ def verificar_gmail():
                     # Extração de SKU e quantidade (lógica definitiva)
                     # Padrão Shopee: "1002 - 20 FOTOS" → 20 fotos
                     qtds_sku = re.findall(r'\d+\s*-\s*(\d+)\s+FOTOS?', corpo, re.IGNORECASE)
-                    # Dimensões dos produtos: "10x15", "15X21", etc.
+                    # Dimensões válidas: apenas tamanhos de foto conhecidos
+                    _DIMS_VALIDAS = {"10X15", "15X21"}
                     dims_raw = re.findall(r'(\d{2,3}[xX]\d{2,3})', corpo)
                     dims_unique = []
                     for d in [x.upper() for x in dims_raw]:
-                        if not dims_unique or dims_unique[-1] != d:
+                        if d in _DIMS_VALIDAS and (not dims_unique or dims_unique[-1] != d):
                             dims_unique.append(d)
 
                     if qtds_sku:
-                        if len(qtds_sku) == len(dims_unique):
+                        if len(qtds_sku) == len(dims_unique) and dims_unique:
                             partes = [f"{q} fotos {d}" for q, d in zip(qtds_sku, dims_unique)]
                         elif dims_unique:
                             partes = [f"{q} fotos {dims_unique[0]}" for q in qtds_sku]
                         else:
-                            tipo_nome = identificar_tipo(produto, "")
-                            partes = [f"{q} {tipo_nome}" if tipo_nome != "10X15" else f"{q} fotos" for q in qtds_sku]
+                            pasta = identificar_pasta(produto)
+                            _tipos_dim = {"10X15", "15X21", "A4"}
+                            if pasta in _tipos_dim:
+                                partes = [f"{q} fotos {pasta}" for q in qtds_sku]
+                            else:
+                                partes = [f"{q} {pasta}" for q in qtds_sku]
                         sku = ' + '.join(partes)
                         quantidade = qtds_sku[0] if len(qtds_sku) == 1 else ''
                     else:
