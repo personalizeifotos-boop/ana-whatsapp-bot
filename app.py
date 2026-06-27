@@ -209,7 +209,8 @@ FAQ_RESPOSTAS = [
     (
         ["nao chegou", "não chegou", "fotos nao chegaram", "fotos não chegaram",
          "pedido nao chegou", "pedido não chegou", "ainda nao chegou", "ainda não chegou",
-         "minha encomenda nao", "minha encomenda não", "minhas fotos nao chegaram"],
+         "minha encomenda nao", "minha encomenda não", "minhas fotos nao chegaram",
+         "ainda nao chegaram", "ainda não chegaram", "minhas fotos ainda", "fotos ainda nao chegou", "fotos ainda não chegou"],
         "Você precisa abrir uma reclamação no chat da Shopee pedindo atualização do seu pedido, "
         "pois nós só fazemos a venda e a postagem — toda a logística da entrega é feita pela Shopee junto aos Correios. 😔\n"
         "Nós como vendedores não temos controle nenhum sobre esse processo, sinto muito não poder ajudar!"
@@ -257,15 +258,18 @@ FAQ_RESPOSTAS = [
     ),
     (
         ["quero comprar mais fotos", "quero comprar fotos a mais", "comprar fotos extras",
-         "quero mais fotos", "quero fotos a mais", "comprar fotos a mais", "comprar mais fotos"],
+         "quero mais fotos", "quero fotos a mais", "comprar fotos a mais", "comprar mais fotos",
+         "quero comprar algumas fotos", "comprar algumas fotos", "algumas fotos a mais", "quero algumas fotos"],
         "Sem problemas! Quantas fotos você quer comprar a mais e qual a dimensão? 😊\n"
         "(Ex: 10 fotos 10x15, 5 mini fotos, 3 imãs, etc.)"
     ),
     (
         ["me manda o pix", "manda o pix", "manda seu pix", "me manda seu pix",
+         "me manda o seu pix", "manda o seu pix", "me manda o numero do pix", "manda o numero pix",
          "qual o pix", "qual seu pix", "qual o seu pix", "numero do pix", "número do pix",
          "chave pix", "chave do pix", "qual a chave", "qual e o pix", "qual é o pix",
-         "me passa o pix", "passa o pix"],
+         "qual o numero do pix", "qual é o numero do pix", "qual numero do pix",
+         "me passa o pix", "passa o pix", "me passa o numero", "qual o numero pix"],
         "Segue a chave PIX 👇\n\nTitular: Rodrigo Vieira Monteiro\nChave PIX: 58733941000114"
     ),
     (
