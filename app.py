@@ -3,6 +3,7 @@
 
 
 
+
 import os
 import re
 import json
@@ -1452,6 +1453,14 @@ def processar_texto_recebido(phone, body):
     status = estado["status"]
     body_low = body.lower().strip()
 
+    # ââ Tenta extrair nÃºmero do pedido âââââââââââââââââââââââââââ
+    numero = extrair_numero_pedido(body)
+    if numero and pedido_existe(numero):
+        cancelar_timer(phone)
+        vincular_pedido(phone, numero)
+        print(f"[Webhook] Pedido {numero} vinculado ao telefone {phone}")
+        return
+
 
     # ââ Tenta extrair nome do cliente se ainda nÃ£o temos âââââââââ
     if not estado.get("nome_cliente"):
@@ -1574,14 +1583,6 @@ def processar_texto_recebido(phone, body):
                 "Vou chamar um atendente para te ajudar!"
             )
             _notificar_atendente_desktop(phone, f"Cliente enviou link não-Drive: {body}", estado)
-        return
-
-    # ââ Tenta extrair nÃºmero do pedido âââââââââââââââââââââââââââ
-    numero = extrair_numero_pedido(body)
-    if numero and pedido_existe(numero):
-        cancelar_timer(phone)
-        vincular_pedido(phone, numero)
-        print(f"[Webhook] Pedido {numero} vinculado ao telefone {phone}")
         return
 
     # ââ CÃ¡lculo de preÃ§o: ex. "quanto daria 37 fotos imÃ£" ââââââââ
