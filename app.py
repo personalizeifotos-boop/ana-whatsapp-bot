@@ -1583,7 +1583,7 @@ def processar_texto_recebido(phone, body):
         return
 
     if status == "aguardando_resposta_extras":
-        if any(p in body_low for p in ["sim", "yes", "quero", "s"]):
+        if any(p in body_low for p in ["sim", "yes", "quero"]):
             extras = estado["fotos_extras"]
             valor = estado["valor_extra"]
             tipo = identificar_tipo(estado["produto"], estado["sku"])
@@ -1690,6 +1690,16 @@ def processar_texto_recebido(phone, body):
         enviar_mensagem(phone, resposta_faq)
         print(f"[Ana] FAQ respondido para {phone}: {body[:60]}")
         return
+
+        # -- Agradecimentos: responde gentilmente em qualquer status --
+    if any(p in body_low for p in [
+        "obrigada", "obrigado", "obg", "vlw", "valeu", "grata",
+        "muito obrigad", "obrigadinha", "brigadinha", "brigada",
+        "thanks", "thank you"
+    ]):
+        enviar_mensagem(phone, "Nós que agradecemos pela compra, precisando de algo mais, estaremos aqui. 😊")
+        return
+
 
     print(f"[Ana] Texto nÃ£o reconhecido de {phone}: {body[:60]}")
     # Avisar cliente e notificar atendente
