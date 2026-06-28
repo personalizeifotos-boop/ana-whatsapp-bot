@@ -1691,6 +1691,17 @@ def processar_texto_recebido(phone, body):
         print(f"[Ana] FAQ respondido para {phone}: {body[:60]}")
         return
 
+    # -- Saudacoes: responde com a saudacao correta em qualquer status --
+    if "bom dia" in body_low or "boa tarde" in body_low or "boa noite" in body_low:
+        if "boa tarde" in body_low:
+            saudacao = "Boa tarde"
+        elif "boa noite" in body_low:
+            saudacao = "Boa noite"
+        else:
+            saudacao = "Bom dia"
+        enviar_mensagem(phone, f"{saudacao}! No que posso ajudar? 😊")
+        return
+
         # -- Agradecimentos: responde gentilmente em qualquer status --
     if any(p in body_low for p in [
         "obrigada", "obrigado", "obg", "vlw", "valeu", "grata",
