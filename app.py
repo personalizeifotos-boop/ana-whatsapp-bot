@@ -2057,8 +2057,8 @@ def whatsapp():
 
         tem_imagem = (
             msg_type in ("image", "imagem", "imageMessage")
-            or "image" in data
-            or "imagem" in data
+            or bool(data.get("image"))
+            or bool(data.get("imagem"))
             or (isinstance(body, str) and body.startswith("http")
                 and any(ext in body.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]))
             or tem_documento_imagem
