@@ -1799,6 +1799,12 @@ def verificar_gmail():
                 # Filtrar apenas emails de pedido (ignorar promoções e outros)
                 assunto_low = assunto.lower()
                 palavras_pedido = ["hora de enviar", "pedido", "enviar", "preparar", "order"]
+                palavras_ignorar = ["devolucao", "devolução", "cancelamento", "cancelado", "reembolso", "disputa", "estorno"]
+                if any(p in assunto_low for p in palavras_ignorar):
+                    print(f"[IMAP] Ignorando email de devolucao/cancelamento: {assunto[:60]}")
+                    pedidos_processados.add(eid)
+                    mail.store(eid, '+FLAGS', '\\Seen')
+                    continue
                 if not any(p in assunto_low for p in palavras_pedido):
                     print(f"[IMAP] Ignorando email não relacionado a pedido: {assunto[:60]}")
                     pedidos_processados.add(eid)
@@ -1895,7 +1901,11 @@ def verificar_gmail():
                     if mp:
                         prazo = mp.group(1).strip()
 
-                    salvar_pedido(
+                if not produto and not sku:
+                    print(f"[IMAP] Pedido {numero} sem produto/SKU, ignorando.")
+                    pedidos_processados.add(eid)
+                    continue
+                salvar_pedido(
                         numero_pedido=numero, produto=produto,
                         quantidade=quantidade, sku=sku,
                         cliente=cliente, prazo=prazo,
