@@ -1901,11 +1901,11 @@ def verificar_gmail():
                     if mp:
                         prazo = mp.group(1).strip()
 
-                if not produto and not sku:
-                    print(f"[IMAP] Pedido {numero} sem produto/SKU, ignorando.")
-                    pedidos_processados.add(eid)
-                    continue
-                salvar_pedido(
+                    if not produto and not sku:
+                        print(f"[IMAP] Pedido {numero} sem produto/SKU, ignorando.")
+                        pedidos_processados.add(eid)
+                        continue
+                    salvar_pedido(
                         numero_pedido=numero, produto=produto,
                         quantidade=quantidade, sku=sku,
                         cliente=cliente, prazo=prazo,
