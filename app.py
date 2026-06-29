@@ -1347,7 +1347,7 @@ def _vincular_background(phone, numero_pedido, estado, is_multi):
         qtd_retro = min(qtd_retro, imgs_antes)
         if qtd_retro > 0:
             print(f"[Ana] {qtd_retro} fotos retroativas para {phone}")
-        total = fotos_existentes + qtd_retro
+        total = qtd_retro  # fotos_existentes removido: evita contar sessões anteriores
         estado["fotos_recebidas"] = total
         estado["imgs_antes_pedido"] = 0
         if total > 0:
