@@ -1343,8 +1343,9 @@ def _vincular_background(phone, numero_pedido, estado, is_multi):
         fotos_existentes = contar_imagens_pedido(numero_pedido)
         qtd_retro = preencher_pedido_retroativo(phone, numero_pedido)
         imgs_antes = estado.get("imgs_antes_pedido", 0)
-        if qtd_retro > 0 and imgs_antes > 0:
-            qtd_retro = min(qtd_retro, imgs_antes)
+        # Sempre limitar ao que foi enviado NESTA sessão (evita contar fotos de sessões anteriores)
+        qtd_retro = min(qtd_retro, imgs_antes)
+        if qtd_retro > 0:
             print(f"[Ana] {qtd_retro} fotos retroativas para {phone}")
         total = fotos_existentes + qtd_retro
         estado["fotos_recebidas"] = total
@@ -1378,6 +1379,7 @@ def vincular_pedido(phone, numero_pedido):
     estado["limite_fotos"] = limite
     estado["status"] = "aguardando_fotos"
     estado["fotos_recebidas"] = 0      # sempre zera ao vincular novo pedido
+    estado["imgs_antes_pedido"] = 0     # zera fotos antes do pedido nesta sessão
     estado["fotos_extras"] = 0
     estado["valor_extra"] = 0.0
     estado["multi_produto"] = False
