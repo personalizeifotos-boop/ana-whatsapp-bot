@@ -1497,6 +1497,9 @@ def processar_imagem_recebida(phone, image_url):
             _processar_imagem_multiproduto(phone)
             return
         estado["fotos_recebidas"] += 1
+        _fid = ev_key.get("id", "") or data.get("id", "")
+        if _fid:
+            estado.setdefault("fotos_ids", []).append(_fid)
         fotos = estado["fotos_recebidas"]
         limite = estado["limite_fotos"]
         print(f"[Ana] {phone}: {fotos}/{limite} fotos")
@@ -2033,8 +2036,15 @@ def whatsapp():
         if is_deleted:
             print(f"[Ana] Mensagem deletada detectada de {phone} (type={msg_type})")
             estado = get_estado(phone)
+            deleted_id = ev_key.get("id", "") or data.get("id", "")
+            fotos_ids = estado.get("fotos_ids", [])
+            # Só decrementa se o ID deletado era uma foto contada (evita decrementar por msgs de texto)
+            if deleted_id and fotos_ids and deleted_id not in fotos_ids:
+                return "ok", 200  # não era foto contada — ignorar
             if estado["status"] in ("aguardando_fotos", "aguardando_descarte") and estado["fotos_recebidas"] > 0:
                 estado["fotos_recebidas"] = max(0, estado["fotos_recebidas"] - 1)
+                if deleted_id and deleted_id in fotos_ids:
+                    fotos_ids.remove(deleted_id)
                 print(f"[Ana] Foto deletada: agora {estado['fotos_recebidas']}/{estado['limite_fotos']}")
                 iniciar_timer(phone, 30, lambda: reavaliar_apos_delecao(phone))
             return "ok", 200
