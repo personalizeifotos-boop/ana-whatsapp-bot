@@ -1859,7 +1859,23 @@ def verificar_gmail():
                         if len(qtds_sku) == len(dims_unique) and dims_unique:
                             partes = [f"{q} fotos {d}" for q, d in zip(qtds_sku, dims_unique)]
                         elif dims_unique:
-                            partes = [f"{q} fotos {dims_unique[0]}" for q in qtds_sku]
+                            # Quando qtds != dims: identifica tipo de cada produto pelo contexto no email
+                            _sku_iters = list(re.finditer(r'\d+\s*-\s*(\d+)\s+FOTOS?', corpo, re.IGNORECASE))
+                            _SFXM = {"Fotos Retro": "retrô", "Fotos Retro com ima": "retrô com imã",
+                                     "Mini Fotos": "mini", "Mini Fotos com ima": "mini com imã",
+                                     "Mini Fotos Retro": "mini retrô", "Mini Fotos Retro com ima": "mini retrô com imã",
+                                     "15X21": "15X21", "A4": "A4", "10X15": "10X15"}
+                            if len(_sku_iters) >= 2:
+                                partes = []
+                                for _mi in _sku_iters:
+                                    _qtd = _mi.group(1)
+                                    _trecho = corpo[max(0, _mi.start() - 400): _mi.start()]
+                                    _tipo = identificar_tipo('', _trecho)
+                                    _parte = f"{_qtd} fotos {_SFXM.get(_tipo, _tipo)}"
+                                    if _parte not in partes:
+                                        partes.append(_parte)
+                            else:
+                                partes = [f"{q} fotos {dims_unique[0]}" for q in qtds_sku]
                         else:
                             pasta = identificar_pasta(produto)
                             _tipos_dim = {"10X15", "15X21", "A4"}
