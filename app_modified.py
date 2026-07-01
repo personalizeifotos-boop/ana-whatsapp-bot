@@ -582,6 +582,7 @@ def avaliar_conclusao(phone):
 
     if recebidas == limite:
         enviar_mensagem(phone, f"Perfeito, {limite} fotos {tipo}")
+        time.sleep(1)  # Pausa para Z-API não rejeitar envio em sequência
         enviar_mensagem(phone, MSG_FINALIZAR)
         estado["status"] = "concluido"
         cancelar_timer(phone)
@@ -798,7 +799,19 @@ def processar_texto_recebido(phone, body):
         vincular_pedido(phone, numero)
         print(f"[Webhook] Pedido {numero} vinculado ao telefone {phone}")
     else:
-        print(f"[Ana] Texto não reconhecido de {phone}: {body[:60]}")
+        # ── Confirmações/agradecimentos — ignorar silenciosamente ────────
+    _confirmacoes = {
+        "certinho", "certo", "certa", "ok", "okay", "\u00f3timo", "otimo",
+        "obrigado", "obrigada", "obg", "obgada", "valeu", "vlw", "blz",
+        "beleza", "ta", "t\u00e1", "tudo bem", "t\u00e1 bom", "ta bom",
+        "entendido", "combinado", "legal", "show", "perfeito", "perfeita",
+        "boa", "bacana", "\U0001f44d", "\U0001f60a", "\U0001f601", "\U0001f64f", "\u2705",
+    }
+    if body_low.strip("!. ") in _confirmacoes:
+        print(f"[Ana] Confirma\u00e7\u00e3o ignorada de {phone}: {body[:60]}")
+        return
+
+    print(f"[Ana] Texto n\u00e3o reconhecido de {phone}: {body[:60]}")
 
 # ── Extração do número de pedido ─────────────────────────────
 def extrair_numero_pedido(texto):
