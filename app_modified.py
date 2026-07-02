@@ -889,6 +889,16 @@ def verificar_gmail():
                 assunto = msg.get("Subject", "")
                 corpo   = extrair_corpo_email(msg)
 
+                # Validação dupla: garante que é email de pedido de VENDA
+                if 'hora de enviar' not in assunto.lower():
+                    print(f"[IMAP] Email ignorado — não é pedido de venda: {assunto[:80]}")
+                    pedidos_processados.add(eid)
+                    continue
+                if not re.search(r'Envie o pedido para', corpo, re.IGNORECASE):
+                    print(f"[IMAP] Email ignorado — sem instrução de envio (possível compra): {assunto[:80]}")
+                    pedidos_processados.add(eid)
+                    continue
+
                 m_subj = re.search(r'pedido\s+([A-Z0-9]{10,20})', assunto, re.IGNORECASE)
                 numero = (m_subj.group(1).upper() if m_subj
                           else (extrair_numero_pedido(assunto) or extrair_numero_pedido(corpo)))
