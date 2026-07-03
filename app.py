@@ -40,6 +40,7 @@ except Exception as _e:
 # ââ Controle da Ana âââââââââââââââââââââââââââââââââââââââââââ
 # Defina como True para reativar o envio de mensagens da Ana
 ANA_ATIVA = True
+_pausa_mensagens = False  # True = mensagens pausadas, imagens continuam normalmente
 
 # DEBUG: armazena últimos payloads para diagnóstico
 _ultimos_payloads = []
@@ -615,6 +616,9 @@ def enviar_mensagem(phone, mensagem):
     mensagem = _fix_encoding(mensagem)
     if not ANA_ATIVA:
         print(f"[Ana DESATIVADA] Mensagem bloqueada para {phone}: {mensagem[:80]}")
+        return False
+    if _pausa_mensagens:
+        print(f"[Ana PAUSADA] Mensagem bloqueada para {phone}: {mensagem[:80]}")
         return False
     phone_num = re.sub(r'\D', '', phone)
     url = f"{ZAPI_BASE_URL}/send-text"
@@ -2203,6 +2207,24 @@ def debug_payloads():
 @app.route("/", methods=["GET"])
 def health():
     return "Ana Bot OK", 200
+
+@app.route("/pausar", methods=["GET"])
+def pausar_mensagens():
+    global _pausa_mensagens
+    token = request.args.get("token", "")
+    if token != "personalizeifotospausar":
+        return "Token inválido", 403
+    _pausa_mensagens = True
+    return "✅ Ana PAUSADA — mensagens bloqueadas, imagens continuam normalmente.", 200
+
+@app.route("/retomar", methods=["GET"])
+def retomar_mensagens():
+    global _pausa_mensagens
+    token = request.args.get("token", "")
+    if token != "personalizeifotospausar":
+        return "Token inválido", 403
+    _pausa_mensagens = False
+    return "✅ Ana RETOMADA — mensagens enviando normalmente.", 200
 
 _imap_thread = threading.Thread(target=thread_gmail, daemon=True)
 _imap_thread.start()
