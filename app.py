@@ -2226,6 +2226,24 @@ def retomar_mensagens():
     _pausa_mensagens = False
     return "✅ Ana RETOMADA — mensagens enviando normalmente.", 200
 
+@app.route("/desativar", methods=["GET"])
+def desativar_bot():
+    global ANA_ATIVA
+    token = request.args.get("token", "")
+    if token != "personalizeifotospausar":
+        return "Token inválido", 403
+    ANA_ATIVA = False
+    return "🛑 Ana DESATIVADA por completo — nenhuma mensagem ou ação será executada.", 200
+
+@app.route("/ativar", methods=["GET"])
+def ativar_bot():
+    global ANA_ATIVA
+    token = request.args.get("token", "")
+    if token != "personalizeifotospausar":
+        return "Token inválido", 403
+    ANA_ATIVA = True
+    return "✅ Ana ATIVADA — funcionando normalmente.", 200
+
 _imap_thread = threading.Thread(target=thread_gmail, daemon=True)
 _imap_thread.start()
 
