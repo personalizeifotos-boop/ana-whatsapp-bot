@@ -1501,7 +1501,7 @@ def processar_imagem_recebida(phone, image_url):
             _processar_imagem_multiproduto(phone)
             return
         estado["fotos_recebidas"] += 1
-        _fid = ev_key.get("id", "") or data.get("id", "")
+        _fid = data.get("id", "")
         if _fid:
             estado.setdefault("fotos_ids", []).append(_fid)
         fotos = estado["fotos_recebidas"]
