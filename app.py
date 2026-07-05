@@ -40,7 +40,7 @@ except Exception as _e:
 # ââ Controle da Ana âââââââââââââââââââââââââââââââââââââââââââ
 # Defina como True para reativar o envio de mensagens da Ana
 ANA_ATIVA = True
-_pausa_mensagens = False  # True = mensagens pausadas, imagens continuam normalmente
+_pausa_mensagens = True  # True = mensagens pausadas, imagens continuam normalmente
 
 # DEBUG: armazena últimos payloads para diagnóstico
 _ultimos_payloads = []
@@ -2223,7 +2223,7 @@ def retomar_mensagens():
     token = request.args.get("token", "")
     if token != "personalizeifotospausar":
         return "Token inválido", 403
-    _pausa_mensagens = False
+    _pausa_mensagens = True
     return "✅ Ana RETOMADA — mensagens enviando normalmente.", 200
 
 @app.route("/desativar", methods=["GET"])
