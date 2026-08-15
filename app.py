@@ -926,16 +926,108 @@ def salvar_pedido(numero_pedido, produto="", quantidade="", sku="",
         print(f"[Sheets] Erro ao salvar pedido: {e}")
         raise
 
+# ══════════════════════════════════════════════════════════════════════
+#   FILA DE REGISTRO NA ABA "IMAGENS"  —  correção de 15/08/2026
+#
+#   A versão anterior fazia DUAS chamadas de API por foto (get_sheet para
+#   reabrir a planilha + append_row para gravar). O Google permite 60 por
+#   minuto. Um álbum de 50 fotos dispara 100 chamadas em segundos, estoura
+#   a cota, o Google responde 429, o erro cai no except e A FOTO DO CLIENTE
+#   É DESCARTADA EM SILÊNCIO. (Ver log do Railway em 14/08 19:41.)
+#
+#   Agora: worksheet em cache, dedup em memória, e as linhas vão para uma
+#   fila gravada em LOTE por uma thread. 50 fotos = 1 chamada de API.
+#   Falha de gravação devolve o lote para a fila — nenhuma linha é perdida.
+# ══════════════════════════════════════════════════════════════════════
+
+FLUSH_SEGUNDOS    = 3.0     # janela de agrupamento das linhas
+FLUSH_MAX_LINHAS  = 200     # teto de linhas por chamada de API
+BACKOFF_MAX       = 60.0    # espera máxima entre tentativas
+URLS_VISTAS_MAX   = 50000   # teto do dedup em memória
+
+_fila_imagens     = []
+_fila_lock        = threading.Lock()
+_urls_vistas      = set()
+_urls_ordem       = []
+_urls_lock        = threading.Lock()
+_ws_imagens_cache = None
+_ws_cache_lock    = threading.Lock()
+
+
+def _ws_imagens(forcar=False):
+    """Worksheet 'Imagens' em cache. Reabrir a planilha custa 1 leitura de
+    API — fazer isso a cada foto era metade do problema."""
+    global _ws_imagens_cache
+    with _ws_cache_lock:
+        if _ws_imagens_cache is None or forcar:
+            _ws_imagens_cache = get_sheet(
+                "Imagens", ["Telefone", "URL", "Data", "Status", "Pedido", "Tipo"]
+            )
+        return _ws_imagens_cache
+
+
 def salvar_imagem_pendente(phone, image_url, pedido="", tipo="", status="pendente"):
-    try:
-        ws = get_sheet("Imagens", ["Telefone", "URL", "Data", "Status", "Pedido", "Tipo"])
-        if ws is None:
+    """Enfileira a foto para registro na aba Imagens.
+
+    NÃO faz nenhuma chamada de API — retorna em microssegundos.
+    A gravação acontece em lote, na thread _flusher_imagens.
+    """
+    if not image_url:
+        return
+    # Dedup em memória. A Z-API repete eventos, então o dedup precisa
+    # existir — mas sem custar uma chamada de API por foto.
+    with _urls_lock:
+        if image_url in _urls_vistas:
+            print(f"[Imagens] URL duplicada ignorada: {phone}")
             return
-        data = datetime.now(BRASILIA).strftime("%d/%m/%Y %H:%M")
-        ws.append_row([phone, image_url, data, status, pedido, tipo])
-        print(f"[Imagens] Registrada: {phone} (pedido: {pedido or 'nao vinculado'}, tipo: {tipo or '-'})")
-    except Exception as e:
-        print(f"[Imagens] Erro ao registrar: {e}")
+        _urls_vistas.add(image_url)
+        _urls_ordem.append(image_url)
+        if len(_urls_ordem) > URLS_VISTAS_MAX:
+            _urls_vistas.discard(_urls_ordem.pop(0))
+
+    data = datetime.now(BRASILIA).strftime("%d/%m/%Y %H:%M")
+    with _fila_lock:
+        _fila_imagens.append([phone, image_url, data, status, pedido, tipo])
+        n = len(_fila_imagens)
+    print(f"[Imagens] Enfileirada: {phone} (pedido: {pedido or 'nao vinculado'}, "
+          f"tipo: {tipo or '-'}, status: {status}) — {n} na fila")
+
+
+def _flusher_imagens():
+    """Grava a fila em lote: 1 chamada de API por rajada, com retry.
+
+    Regra inegociável: lote que não gravou VOLTA para o início da fila.
+    Pode demorar, mas não perde foto de cliente.
+    """
+    espera = FLUSH_SEGUNDOS
+    while True:
+        time.sleep(espera)
+        with _fila_lock:
+            if not _fila_imagens:
+                espera = FLUSH_SEGUNDOS
+                continue
+            lote = _fila_imagens[:FLUSH_MAX_LINHAS]
+            del _fila_imagens[:len(lote)]
+        try:
+            ws = _ws_imagens()
+            if ws is None:
+                raise RuntimeError("aba Imagens indisponivel")
+            ws.append_rows(lote, value_input_option="RAW")
+            print(f"[Imagens] ✓ {len(lote)} linha(s) gravada(s) em 1 chamada de API.")
+            espera = FLUSH_SEGUNDOS
+        except Exception as e:
+            with _fila_lock:
+                _fila_imagens[0:0] = lote      # devolve preservando a ordem
+                pendentes = len(_fila_imagens)
+            espera = min(espera * 2, BACKOFF_MAX)
+            _ws_imagens(forcar=True)           # sessão pode ter expirado
+            print(f"[Imagens] ⚠ Lote de {len(lote)} não gravado ({e}). "
+                  f"{pendentes} na fila — nova tentativa em {espera:.0f}s. "
+                  f"NENHUMA FOTO FOI PERDIDA.")
+
+
+threading.Thread(target=_flusher_imagens, daemon=True).start()
+
 
 def _forcar_conclusao_descarte(phone):
     """Conclui pedido em aguardando_descarte mesmo sem webhook de delecao.
