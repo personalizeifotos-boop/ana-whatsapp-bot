@@ -2282,6 +2282,80 @@ def whatsapp():
         traceback.print_exc()
         return "ok", 200
 
+# ══════════════════════════════════════════════════════════════════════
+#   WEBHOOK DE STATUS DA MENSAGEM  —  FASE 1: SOMENTE OBSERVAR
+#
+#   Rota SEPARADA de proposito. O webhook "status da mensagem" da Z-API
+#   dispara para CADA mensagem entregue/lida — volume alto — e a rota
+#   /whatsapp foi escrita esperando foto ou texto. Misturar os dois
+#   arriscaria o fluxo de fotos, que acabou de ser estabilizado.
+#
+#   Esta rota NAO apaga nada, NAO altera planilha e NAO responde ao
+#   cliente. Ela so registra, para descobrirmos o formato real do evento
+#   de exclusao antes de escrever a logica que apaga arquivo.
+#
+#   Nunca levanta excecao: sempre devolve 200, para a Z-API nao ficar
+#   reenviando o mesmo evento.
+# ══════════════════════════════════════════════════════════════════════
+
+_ultimos_status = []
+_status_lock = threading.Lock()
+STATUS_BUFFER_MAX = 30
+
+
+@app.route("/whatsapp-status", methods=["POST"])
+def whatsapp_status():
+    """Recebe o webhook 'Receber status da mensagem' da Z-API. Só observa."""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        status = str(data.get("status", "")).upper()
+        phone = data.get("phone", "") or data.get("connectedPhone", "")
+        # A Z-API pode mandar o identificador como ids[], messageId ou id.
+        ids = data.get("ids") or data.get("messageId") or data.get("id") or ""
+        eh_exclusao = ("DELET" in status) or ("REVOKE" in status)
+
+        with _status_lock:
+            _ultimos_status.append({
+                "ts": datetime.now(BRASILIA).strftime("%d/%m/%Y %H:%M:%S"),
+                "status": status,
+                "phone": phone,
+                "ids": ids,
+                "exclusao": eh_exclusao,
+                "payload": data,
+            })
+            if len(_ultimos_status) > STATUS_BUFFER_MAX:
+                _ultimos_status.pop(0)
+
+        if eh_exclusao:
+            print(f"[Status] *** EXCLUSAO *** status={status} phone={phone} ids={ids}")
+            print(f"[Status] PAYLOAD COMPLETO: {json.dumps(data)[:1000]}")
+        else:
+            print(f"[Status] status={status} phone={phone} ids={ids}")
+    except Exception as e:
+        # Falha aqui nao pode derrubar nada nem gerar reenvio da Z-API.
+        print(f"[Status] erro ao registrar (ignorado): {e}")
+    return "ok", 200
+
+
+@app.route("/debug-status", methods=["GET"])
+def debug_status():
+    """Devolve os ultimos eventos de status recebidos, para inspecao.
+
+    ?token=...            obrigatorio
+    ?exclusoes=1          filtra so os eventos de exclusao
+    """
+    if request.args.get("token", "") != "personalizeifotospausar":
+        return "Token invalido", 403
+    so_exclusoes = request.args.get("exclusoes", "") == "1"
+    with _status_lock:
+        dados = [d for d in _ultimos_status if d["exclusao"] or not so_exclusoes]
+    return (
+        json.dumps(dados, ensure_ascii=False, indent=1),
+        200,
+        {"Content-Type": "application/json; charset=utf-8"},
+    )
+
+
 @app.route("/debug-payloads", methods=["GET"])
 def debug_payloads():
     return json.dumps(_ultimos_payloads, ensure_ascii=False, default=str), 200, {"Content-Type": "application/json"}
