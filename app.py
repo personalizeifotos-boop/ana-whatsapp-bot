@@ -2138,7 +2138,14 @@ def whatsapp():
         if is_deleted:
             print(f"[Ana] Mensagem deletada detectada de {phone} (type={msg_type})")
             estado = get_estado(phone)
-            deleted_id = ev_key.get("id", "") or data.get("id", "")
+            # CORRIGIDO 15/08/2026: a Z-API manda o ID da mensagem apagada em
+            # "messageId". O codigo antigo so olhava "id"/"ev_key.id", que vem
+            # vazios no REVOKE — por isso nunca dava para saber QUAL foto saiu.
+            deleted_id = (data.get("messageId", "")
+                          or ev_key.get("id", "")
+                          or data.get("id", ""))
+            if deleted_id:
+                enfileirar_exclusao(deleted_id, phone)
             fotos_ids = estado.get("fotos_ids", [])
             # SÃÂÃÂ³ decrementa se o ID deletado era uma foto contada (evita decrementar por msgs de texto)
             if deleted_id and fotos_ids and deleted_id not in fotos_ids:
@@ -2354,6 +2361,90 @@ def debug_status():
         200,
         {"Content-Type": "application/json; charset=utf-8"},
     )
+
+
+# ══════════════════════════════════════════════════════════════════════
+#   FILA DE EXCLUSOES  —  cliente apagou uma foto no WhatsApp
+#
+#   A Z-API avisa a exclusao no webhook "Ao receber", como um
+#   ReceivedCallback com notification="REVOKE". O unico identificador util
+#   e o messageId — referenceMessageId e notificationParameters vem vazios
+#   (verificado em eventos reais em 15/08/2026).
+#
+#   O Railway nao escreve no PC do Rodrigo, entao o recado vai para a aba
+#   "Exclusoes" da planilha. Quem apaga arquivo e o criar_pastas.py, no
+#   computador — aqui NADA e apagado.
+#
+#   Mesma logica de lote da aba Imagens: nunca 1 chamada de API por evento,
+#   e lote que falha volta para a fila.
+# ══════════════════════════════════════════════════════════════════════
+
+_fila_exclusoes     = []
+_fila_exc_lock      = threading.Lock()
+_exc_vistos         = set()
+_ws_exclusoes_cache = None
+_ws_exc_lock        = threading.Lock()
+EXC_VISTOS_MAX      = 20000
+
+
+def _ws_exclusoes(forcar=False):
+    """Worksheet 'Exclusoes' em cache (criada automaticamente se nao existir)."""
+    global _ws_exclusoes_cache
+    with _ws_exc_lock:
+        if _ws_exclusoes_cache is None or forcar:
+            _ws_exclusoes_cache = get_sheet(
+                "Exclusoes", ["MessageId", "Telefone", "Data", "Status"]
+            )
+        return _ws_exclusoes_cache
+
+
+def enfileirar_exclusao(message_id, phone=""):
+    """Registra que o cliente apagou uma mensagem. NAO apaga arquivo nenhum."""
+    if not message_id:
+        return
+    with _fila_exc_lock:
+        if message_id in _exc_vistos:
+            print(f"[Exclusao] {message_id} repetida — ignorando")
+            return
+        _exc_vistos.add(message_id)
+        if len(_exc_vistos) > EXC_VISTOS_MAX:
+            _exc_vistos.clear()
+        quando = datetime.now(BRASILIA).strftime("%d/%m/%Y %H:%M")
+        _fila_exclusoes.append([message_id, phone, quando, "pendente"])
+        n = len(_fila_exclusoes)
+    print(f"[Exclusao] Cliente {phone} apagou a mensagem {message_id} — {n} na fila")
+
+
+def _flusher_exclusoes():
+    """Grava a fila de exclusoes em lote, com backoff. Nunca descarta linha."""
+    espera = 3.0
+    while True:
+        time.sleep(espera)
+        with _fila_exc_lock:
+            if not _fila_exclusoes:
+                espera = 3.0
+                continue
+            lote = _fila_exclusoes[:200]
+            del _fila_exclusoes[:len(lote)]
+        try:
+            ws = _ws_exclusoes()
+            if ws is None:
+                raise RuntimeError("aba Exclusoes indisponivel")
+            ws.append_rows(lote, value_input_option="RAW")
+            print(f"[Exclusao] ✓ {len(lote)} exclusao(oes) gravada(s) em 1 chamada de API.")
+            espera = 3.0
+        except Exception as e:
+            with _fila_exc_lock:
+                _fila_exclusoes[0:0] = lote
+                pendentes = len(_fila_exclusoes)
+            espera = min(espera * 2, 60.0)
+            _ws_exclusoes(forcar=True)
+            print(f"[Exclusao] ⚠ Lote de {len(lote)} nao gravado ({e}). "
+                  f"{pendentes} na fila — nova tentativa em {espera:.0f}s. "
+                  f"NENHUMA EXCLUSAO FOI PERDIDA.")
+
+
+threading.Thread(target=_flusher_exclusoes, daemon=True).start()
 
 
 @app.route("/debug-payloads", methods=["GET"])
